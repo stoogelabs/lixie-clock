@@ -8,15 +8,22 @@
 
 //EEPROMClass  MODE("eeprom0", 0x1000);
 
-#define BUTTON_PIN   T5    // Digital IO pin connected to the button.  This will be
-#define TRIGGER_PIN  13                             // driven with a pull-up resistor so the switch should
-                                                    // pull the pin to ground momentarily.  On a high -> low
-                                                    // transition the button press logic will execute.
+#define BUTTON_PIN   T5   // Digital IO pin connected to the button.  This will be
+#define TRIGGER_PIN  13   // driven with a pull-up resistor so the switch should
+                          // pull the pin to ground momentarily.  On a high -> low
+                          // transition the button press logic will execute.
 
-#define PIXEL_PIN    15   // Digital IO pin connected to the NeoPixels.
+#define PIXEL_PIN_1    15   // Digital IO pin connected to the NeoPixels.
+#define PIXEL_PIN_2    5
+#define PIXEL_PIN_3    14
+
 #define LLC   11
 
-#define PIXEL_COUNT 20
+#define PIXELS_PER_DIGIT 20
+#define DIGITS_PER_STRIP 2
+#define STRIP_COUNT 3
+#define DIGIT_COUNT STRIP_COUNT * DIGITS_PER_STRIP
+#define PIXELS_PER_STRIP PIXELS_PER_DIGIT * DIGITS_PER_STRIP
 
 #define BUTTON_COOLDOWN  100 // minimum time in miliseconds between button presses (to reduce noise)
 #define BUTTON_LONG_PRESS  600 // miliseconds between button down and up to count as a long press
@@ -32,7 +39,11 @@
 //   NEO_GRB     Pixels are wired for GRB bitstream, correct for neopixel stick
 //   NEO_KHZ400  400 KHz bitstream (e.g. FLORA pixels)
 //   NEO_KHZ800  800 KHz bitstream (e.g. High Density LED strip), correct for neopixel stick
-NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip(PIXEL_COUNT, PIXEL_PIN);
+NeoPixelBus<NeoGrbFeature, NeoWs2813Method> pixelStrips[] = {
+  NeoPixelBus<NeoGrbFeature, NeoWs2813Method>(PIXELS_PER_STRIP, PIXEL_PIN_1),
+  NeoPixelBus<NeoGrbFeature, NeoWs2813Method>(PIXELS_PER_STRIP, PIXEL_PIN_2),
+  NeoPixelBus<NeoGrbFeature, NeoWs2813Method>(PIXELS_PER_STRIP, PIXEL_PIN_3),
+};
 
 uint8_t displayMode = 0;
 bool buttonState = HIGH;   // LOW = pressed
@@ -56,14 +67,18 @@ int value = 0;
 void setup() {
     Serial.begin(115200);
     pinMode(BUTTON_PIN, INPUT_PULLUP);
-    pinMode(PIXEL_PIN, OUTPUT);
+    pinMode(PIXEL_PIN_1, OUTPUT);
+    pinMode(PIXEL_PIN_2, OUTPUT);
+    pinMode(PIXEL_PIN_3, OUTPUT);
     pinMode(LLC, OUTPUT);
     digitalWrite(LLC, LOW);
 
-    strip.Begin();
-    
-    strip.Show(); // Initialize all pixels to 'off'
-     Serial.println();
+    for (byte i = 0; i < STRIP_COUNT; i++) {
+      pixelStrips[i].Begin();
+      pixelStrips[i].Show(); // Initialize all pixels to 'off'
+    }
+
+    Serial.println();
     Serial.println();
     Serial.print("Connecting to ");
     Serial.println(ssid);
@@ -82,37 +97,37 @@ void setup() {
 
     ArduinoOTA
     .onStart([]() {
-      String type;
-      if (ArduinoOTA.getCommand() == U_FLASH)
-        type = "sketch";
-      else // U_SPIFFS
-        type = "filesystem";
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH)
+            type = "sketch";
+        else // U_SPIFFS
+            type = "filesystem";
 
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
+        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+        Serial.println("Start updating " + type);
     })
     .onEnd([]() {
-      Serial.println("\nEnd");
+        Serial.println("\nEnd");
     })
     .onProgress([](unsigned int progress, unsigned int total) {
-      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
     })
     .onError([](ota_error_t error) {
-      Serial.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+        Serial.printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+        else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+        else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+        else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+        else if (error == OTA_END_ERROR) Serial.println("End Failed");
     });
 
     ArduinoOTA.begin();
-    
+
     server.begin();
-    
 
 
-   // displayMode = EEPROM.read(DISPLAY_MODE_ADDR);
+
+    // displayMode = EEPROM.read(DISPLAY_MODE_ADDR);
 }
 
 boolean checkModeChange() {
@@ -157,7 +172,8 @@ boolean checkModeChange() {
         }
         if(now - buttonDownTime < BUTTON_LONG_PRESS) {
             displayMode++;
-            if (displayMode > 11)
+
+            if (displayMode >= DIGIT_COUNT * 10)
                 displayMode = 0;
 
             //EEPROM.write(DISPLAY_MODE_ADDR, displayMode);
@@ -170,257 +186,106 @@ boolean checkModeChange() {
 
 void loop() {
 
-  ArduinoOTA.handle();
-  
-  WiFiClient client = server.available();   // listen for incoming clients
+    ArduinoOTA.handle();
 
-  if (client) {                             // if you get a client,
-    Serial.println("New Client.");           // print a message out the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected()) {            // loop while the client's connected
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        if (c == '\n') {                    // if the byte is a newline character
+    WiFiClient client = server.available();   // listen for incoming clients
 
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println();
+    if (client) {                             // if you get a client,
+        Serial.println("New Client.");           // print a message out the serial port
+        String currentLine = "";                // make a String to hold incoming data from the client
+        while (client.connected()) {            // loop while the client's connected
+            if (client.available()) {             // if there's bytes to read from the client,
+                char c = client.read();             // read a byte, then
+                Serial.write(c);                    // print it out the serial monitor
+                if (c == '\n') {                    // if the byte is a newline character
 
-            // the content of the HTTP response follows the header:
-            client.print("Click <a href=\"/H\">here</a> to turn the LED on pin 5 on.<br>");
-            client.print("Click <a href=\"/L\">here</a> to turn the LED on pin 5 off.<br>");
+                    // if the current line is blank, you got two newline characters in a row.
+                    // that's the end of the client HTTP request, so send a response:
+                    if (currentLine.length() == 0) {
+                        // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+                        // and a content-type so the client knows what's coming, then a blank line:
+                        client.println("HTTP/1.1 200 OK");
+                        client.println("Content-type:text/html");
+                        client.println();
 
-            // The HTTP response ends with another blank line:
-            client.println();
-            // break out of the while loop:
-            break;
-          } else {    // if you got a newline, then clear currentLine:
-            currentLine = "";
-          }
-        } else if (c != '\r') {  // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
+                        // the content of the HTTP response follows the header:
+                        client.print("Click <a href=\"/H\">here</a> to turn the LED on pin 5 on.<br>");
+                        client.print("Click <a href=\"/L\">here</a> to turn the LED on pin 5 off.<br>");
+
+                        // The HTTP response ends with another blank line:
+                        client.println();
+                        // break out of the while loop:
+                        break;
+                    } else {    // if you got a newline, then clear currentLine:
+                        currentLine = "";
+                    }
+                } else if (c != '\r') {  // if you got anything else but a carriage return character,
+                    currentLine += c;      // add it to the end of the currentLine
+                }
+
+                // Check to see if the client request was "GET /H" or "GET /L":
+                if (currentLine.endsWith("GET /H")) {
+                    displayMode++;               // GET /H turns the LED on
+                }
+                if (currentLine.endsWith("GET /L")) {
+                    displayMode--;                // GET /L turns the LED off
+                }
+            }
         }
-
-        // Check to see if the client request was "GET /H" or "GET /L":
-        if (currentLine.endsWith("GET /H")) {
-          displayMode++;               // GET /H turns the LED on
-        }
-        if (currentLine.endsWith("GET /L")) {
-          displayMode--;                // GET /L turns the LED off
-        }
-      }
+        // close the connection:
+        client.stop();
+        Serial.println("Client Disconnected.");
     }
-    // close the connection:
-    client.stop();
-    Serial.println("Client Disconnected.");
-  }
-  Serial.println(touchRead(T5));  // get value using T0
-  RgbColor white(255 * brightness, 255 * brightness, 255 * brightness);
-  RgbColor red(255 * brightness, 0 * brightness, 0 * brightness);
-  RgbColor green(30 * brightness, 255 * brightness, 0 * brightness);
-  RgbColor blue(0, 30 * brightness, 255 * brightness);
+    Serial.println(touchRead(T5));  // get value using T0
 
-  
-  
-    switch(displayMode) {
-      
-        case 0: colorWipe0(red, 50);  // green
-        digitalWrite(LLC, LOW);
-                        break;
-        case 1: colorWipe1(green, 50);  // blue
-        digitalWrite(LLC, LOW);
-                        break;;
-        case 2: colorWipe9(blue, 50);  // green
-        digitalWrite(LLC, LOW);
-                        break;
-        case 3: colorWipe2(white, 50);  // blue
-        digitalWrite(LLC, LOW);
-                        break;;
-        case 4: colorWipe8(blue, 50);  // green
-        digitalWrite(LLC, LOW);
-                        break;
-        case 5: colorWipe3(green, 50);  // blue
-        digitalWrite(LLC, LOW);
-                        break;;
-        case 6: colorWipe7(red, 50);  // green
-        digitalWrite(LLC, LOW);
-                        break;
-        case 7: colorWipe4(white, 50);  // blue
-        digitalWrite(LLC, LOW);
-                        break;;
-        case 8: colorWipe6(green, 50);  // green
-        digitalWrite(LLC, LOW);
-                        break;
-        case 9: colorWipe5(blue, 50);  // blue
-        digitalWrite(LLC, LOW);
-                        break;;
-                        
- 
-        default:
-            displayMode = 0;
-           // EEPROM.write(DISPLAY_MODE_ADDR, 0);
-    }
+    byte digitIndex = displayMode / 10;
+    byte digitValue = displayMode % 10;
+
+    RgbColor testColors[] = {
+      RgbColor(255 * brightness, 255 * brightness, 255 * brightness), // white
+      RgbColor(255 * brightness, 0 * brightness, 0 * brightness), // red
+      RgbColor(30 * brightness, 255 * brightness, 0 * brightness), // green
+      RgbColor(0, 30 * brightness, 255 * brightness), // blue
+    };
+
+    setDigit(digitIndex, digitValue, testColors[digitValue % 4]);
 }
 
-// Fill the dots one after the other with a color
-void colorWipe0(RgbColor c, uint8_t wait) {
-  if(checkModeChange())
-    return;
-  
-  for(int j=0; j<20; j++) {
-    strip.SetPixelColor(j, 0);
+void clearPixels(NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip, byte offset, byte count) {
+  for (byte i = 0; i < count; i++) {
+      strip.SetPixelColor(i + offset, 0);
   }
-  strip.SetPixelColor(0, c);
-  strip.SetPixelColor(10, c);
-  
+}
+
+void setDigit(byte index, byte value, RgbColor c) {
+  if (checkModeChange())
+      return;
+
+  byte stripIndex = index / DIGITS_PER_STRIP;
+  auto strip = pixelStrips[stripIndex];
+
+  // digit  offsets
+  // 0      0, 10
+  // 1      9, 19
+  // 2      8, 18
+  // 3      7, 17
+  // 4      6, 16
+  // 5      5, 15
+  // 6      4, 14
+  // 7      3, 13
+  // 8      2, 12
+  // 9      1, 11
+
+  byte pixelOffset = (index % DIGITS_PER_STRIP) * PIXELS_PER_DIGIT;
+  byte pixel0 = ((10 - value) % 10) + pixelOffset;
+  byte pixel1 = pixel0 + 10;
+
+  clearPixels(strip, pixelOffset, PIXELS_PER_DIGIT);
+
+  strip.SetPixelColor(pixel0, c);
+  strip.SetPixelColor(pixel1, c);
+
   strip.Show();
-}
-
-// Fill the dots one after the other with a color
-void colorWipe1(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(9, c);
-        strip.SetPixelColor(19, c);
-        
-        strip.Show();
-        
-    
-}
-// Fill the dots one after the other with a color
-void colorWipe2(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(8, c);
-        strip.SetPixelColor(18, c);
-        
-        strip.Show();
-        
-        
-    
-}
-// Fill the dots one after the other with a color
-void colorWipe3(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(7, c);
-        strip.SetPixelColor(17, c);
-        
-        strip.Show();
-        
-    
-}
-
-// Fill the dots one after the other with a color
-void colorWipe4(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(6, c);
-        strip.SetPixelColor(16, c);
-        
-        strip.Show();
-        
-    
-}
-// Fill the dots one after the other with a color
-void colorWipe5(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(5, c);
-        strip.SetPixelColor(15, c);
-        
-        strip.Show();
-        
-    
-}
-
-// Fill the dots one after the other with a color
-void colorWipe6(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(4, c);
-        strip.SetPixelColor(14, c);
-        
-        strip.Show();
-        
-    
-}
-
-// Fill the dots one after the other with a color
-void colorWipe7(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(3, c);
-        strip.SetPixelColor(13, c);
-        
-        strip.Show();
-        
-    
-}
-// Fill the dots one after the other with a color
-void colorWipe8(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(2, c);
-        strip.SetPixelColor(12, c);
-        
-        strip.Show();
-        
-    
-}
-
-// Fill the dots one after the other with a color
-void colorWipe9(RgbColor c, uint8_t wait) {
-    
-        if(checkModeChange())
-            return;
-            for(int j=0; j<20; j++) {
-            strip.SetPixelColor(j, 0);
-    }
-        strip.SetPixelColor(1, c);
-        strip.SetPixelColor(11, c);
-        
-        strip.Show();
-        
-    
 }
 
 //void rainbow(uint8_t wait) {
@@ -435,7 +300,7 @@ void colorWipe9(RgbColor c, uint8_t wait) {
 //
 //            strip.SetPixelColor(9, Wheel((j) & 255));
 //            strip.SetPixelColor(19, Wheel((j) & 255));
-//        
+//
 //        strip.Show();
 //        delay(wait * 8);
 //    }
@@ -452,7 +317,7 @@ void colorWipe9(RgbColor c, uint8_t wait) {
 //            strip.SetPixelColor(19, 0);
 //            strip.SetPixelColor(0, Wheel((j) & 255));
 //            strip.SetPixelColor(10, Wheel((j) & 255));
-//        
+//
 //        strip.Show();
 //        delay(wait * 8);
 //    }
@@ -469,7 +334,7 @@ void colorWipe9(RgbColor c, uint8_t wait) {
 //        for(i=0; i< PIXEL_COUNT; i++) {
 //            strip.SetPixelColor(i, Wheel(((i * 256 / PIXEL_COUNT) + j) & 255));
 //        }
-//        
+//
 //        strip.Show();
 //        delay(wait);
 //    }
@@ -501,7 +366,7 @@ void colorWipe9(RgbColor c, uint8_t wait) {
 //
 //            strip.SetPixelColor(i, c);
 //        }
-//        
+//
 //        strip.Show();
 //
 //        delay(wait);
@@ -536,7 +401,7 @@ void colorWipe9(RgbColor c, uint8_t wait) {
 //
 //            strip.SetPixelColor(i, c);
 //        }
-//        
+//
 //        strip.Show();
 //
 //        delay(wait);
