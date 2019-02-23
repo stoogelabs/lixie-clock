@@ -39,11 +39,12 @@
 //   NEO_GRB     Pixels are wired for GRB bitstream, correct for neopixel stick
 //   NEO_KHZ400  400 KHz bitstream (e.g. FLORA pixels)
 //   NEO_KHZ800  800 KHz bitstream (e.g. High Density LED strip), correct for neopixel stick
-NeoPixelBus<NeoGrbFeature, NeoWs2813Method> pixelStrips[] = {
-  NeoPixelBus<NeoGrbFeature, NeoWs2813Method>(PIXELS_PER_STRIP, PIXEL_PIN_1),
-  NeoPixelBus<NeoGrbFeature, NeoWs2813Method>(PIXELS_PER_STRIP, PIXEL_PIN_2),
-  NeoPixelBus<NeoGrbFeature, NeoWs2813Method>(PIXELS_PER_STRIP, PIXEL_PIN_3),
-};
+
+NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip1(PIXELS_PER_STRIP, PIXEL_PIN_1);
+NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip2(PIXELS_PER_STRIP, PIXEL_PIN_2);
+NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip3(PIXELS_PER_STRIP, PIXEL_PIN_3);
+
+NeoPixelBus<NeoGrbFeature, NeoWs2813Method>* pixelStrips[] = {&strip1, &strip2, &strip3};
 
 uint8_t displayMode = 0;
 bool buttonState = HIGH;   // LOW = pressed
@@ -74,8 +75,8 @@ void setup() {
     digitalWrite(LLC, LOW);
 
     for (byte i = 0; i < STRIP_COUNT; i++) {
-      pixelStrips[i].Begin();
-      pixelStrips[i].Show(); // Initialize all pixels to 'off'
+      pixelStrips[i]->Begin();
+      pixelStrips[i]->Show(); // Initialize all pixels to 'off'
     }
 
     Serial.println();
@@ -251,9 +252,9 @@ void loop() {
     setDigit(digitIndex, digitValue, testColors[digitValue % 4]);
 }
 
-void clearPixels(NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip, byte offset, byte count) {
+void clearPixels(NeoPixelBus<NeoGrbFeature, NeoWs2813Method> *strip, byte offset, byte count) {
   for (byte i = 0; i < count; i++) {
-      strip.SetPixelColor(i + offset, 0);
+      strip->SetPixelColor(i + offset, 0);
   }
 }
 
@@ -262,7 +263,8 @@ void setDigit(byte index, byte value, RgbColor c) {
       return;
 
   byte stripIndex = index / DIGITS_PER_STRIP;
-  auto strip = pixelStrips[stripIndex];
+
+  NeoPixelBus<NeoGrbFeature, NeoWs2813Method> *strip = pixelStrips[stripIndex];
 
   // digit  offsets
   // 0      0, 10
@@ -282,213 +284,7 @@ void setDigit(byte index, byte value, RgbColor c) {
 
   clearPixels(strip, pixelOffset, PIXELS_PER_DIGIT);
 
-  strip.SetPixelColor(pixel0, c);
-  strip.SetPixelColor(pixel1, c);
-
-  strip.Show();
+  strip->SetPixelColor(pixel0, c);
+  strip->SetPixelColor(pixel1, c);
+  strip->Show();
 }
-
-//void rainbow(uint8_t wait) {
-//    uint16_t i, j;
-//
-//    for(j=0; j<256; j++) {
-//        if(checkModeChange())
-//            return;
-//
-//            strip.SetPixelColor(0, 0);
-//            strip.SetPixelColor(10, 0);
-//
-//            strip.SetPixelColor(9, Wheel((j) & 255));
-//            strip.SetPixelColor(19, Wheel((j) & 255));
-//
-//        strip.Show();
-//        delay(wait * 8);
-//    }
-//}
-
-//void rainboww(uint8_t wait) {
-//    uint16_t i, j;
-//
-//    for(j=0; j<256; j++) {
-//        if(checkModeChange())
-//            return;
-//
-//            strip.SetPixelColor(9, 0);
-//            strip.SetPixelColor(19, 0);
-//            strip.SetPixelColor(0, Wheel((j) & 255));
-//            strip.SetPixelColor(10, Wheel((j) & 255));
-//
-//        strip.Show();
-//        delay(wait * 8);
-//    }
-//}
-
-// Slightly different, this makes the rainbow equally distributed throughout
-//void rainbowCycle(uint8_t wait) {
-//    uint16_t i, j;
-//
-//    for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-//        if(checkModeChange())
-//            return;
-//
-//        for(i=0; i< PIXEL_COUNT; i++) {
-//            strip.SetPixelColor(i, Wheel(((i * 256 / PIXEL_COUNT) + j) & 255));
-//        }
-//
-//        strip.Show();
-//        delay(wait);
-//    }
-//}
-//
-//void shimmerRainbow(uint8_t wait) {
-//    float t = 0;
-//    float deltaT = 0.0002 * (float)wait;
-//    int hue = 0;
-//    int pixelCount = PIXEL_COUNT;
-//
-//    int colorScale = wait * 0.1;
-//    float spacialScale = TWO_PI / (float)pixelCount;
-//
-//    while(!checkModeChange()) {
-//        hue = (hue + colorScale) % 255;
-//        t += deltaT;
-//        if(t > TWO_PI)
-//            t = 0;
-//
-//        for (int i = 0; i < pixelCount; i++) {
-//            float x = (float)i * spacialScale;
-//
-//            float intensity =   sin(t + x) * 0.2 +
-//                                sin((-t + x) * 2.0) * 0.3 +
-//                                sin((t + x) * 4.0) * 0.5;
-//
-//            uint32_t c = hsb2rgb((int)(hue + 10 * x) % 255, 255, round((128 + 128 * intensity) * brightness));
-//
-//            strip.SetPixelColor(i, c);
-//        }
-//
-//        strip.Show();
-//
-//        delay(wait);
-//    }
-//
-//}
-//
-//void shimmerWhiteAndColor(uint8_t hue, uint8_t wait) {
-//    float t = 0;
-//    float deltaT = 0.0005 * wait;
-//    int pixelCount = PIXEL_COUNT;
-//
-//    float spacialScale = TWO_PI / (float)pixelCount;
-//
-//    while(!checkModeChange()) {
-//        t += deltaT;
-//        if(t > TWO_PI)
-//            t -= TWO_PI;
-//
-//        for (int i = 0; i < pixelCount; i++) {
-//            float x = (float)i * spacialScale;
-//
-//            float intensity =  sin(t + x) * 0.2 +
-//                                sin((-t + x) * 2.0) * 0.3 +
-//                                sin((t + x) * 4.0) * 0.5;
-//
-//            // int saturation = 128 + floor(128.0 * sin((t + x) * 1));
-//            int saturation = round(128 + 128 * intensity);
-//
-//            uint32_t c = hsb2rgb(hue, saturation, round((128 + 128 * intensity) * brightness));
-//
-//
-//            strip.SetPixelColor(i, c);
-//        }
-//
-//        strip.Show();
-//
-//        delay(wait);
-//    }
-//}
-//
-//void pulseTwoColor(uint8_t hue1, uint8_t hue2, uint8_t wait) {
-//    float t = 0;
-//    float deltaT = 0.0003 * wait;
-//    int pixelCount = PIXEL_COUNT;
-//    int hueDelta = round((hue2 - hue1) / (float)(pixelCount - 1));
-//    float dx = 1.0 / pixelCount;
-//
-//    while(!checkModeChange()) {
-//        t += deltaT;
-//        if(t > 1)
-//            t -= 1;
-//
-//        int hue = hue1;
-//        float x = 0;
-//
-//        for (int i = 0; i < pixelCount; i++) {
-//            float intensity = (1 - cos(TWO_PI * (x - t))) * 0.4 + 0.2;
-//
-//            uint32_t c = hsb2rgb(int(hue), 255, round(255 * intensity * brightness));
-//            strip.SetPixelColor(i, c);
-//
-//            hue += hueDelta;
-//            x += dx;
-//        }
-//        strip.Show();
-//
-//        delay(wait);
-//    }
-//}
-
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-//uint32_t Wheel(byte WheelPos) {
-//    WheelPos = 255 - WheelPos;
-//    RgbColor colornew;
-//    if(WheelPos < 85) {
-//        return colornew((255 - WheelPos * 3) * brightness, 0, WheelPos * 3 * brightness);
-//    }
-//    if(WheelPos < 170) {
-//        WheelPos -= 85;
-//        return colornew(0, WheelPos * 3 * brightness, (255 - WheelPos * 3) * brightness);
-//    }
-//    WheelPos -= 170;
-//    return colornew(WheelPos * 3 * brightness, (255 - WheelPos * 3) * brightness, 0);
-//}
-//
-//uint32_t hsb2rgb(uint16_t index, uint8_t sat, uint8_t bright) {
-//    uint16_t r, g, b;
-//    uint8_t index_mod;
-//    uint8_t inverse_sat = (sat ^ 255);
-//
-//    index *= 3;
-//
-//    index = index % 768;
-//    index_mod = index % 256;
-//
-//    if (index < 256) {
-//        r = index_mod ^ 255;
-//        g = index_mod;
-//        b = 0;
-//    } else if (index < 512) {
-//        r = 0;
-//        g = index_mod ^ 255;
-//        b = index_mod;
-//    } else if (index < 768) {
-//        r = index_mod;
-//        g = 0;
-//        b = index_mod ^ 255;
-//    } else {
-//        r = 0;
-//        g = 0;
-//        b = 0;
-//    }
-//
-//    r = ((r * sat) / 255) + inverse_sat;
-//    g = ((g * sat) / 255) + inverse_sat;
-//    b = ((b * sat) / 255) + inverse_sat;
-//
-//    r = (r * bright) / 255;
-//    g = (g * bright) / 255;
-//    b = (b * bright) / 255;
-//RgbColor colornew(r, g, b);
-//    return colornew;
-//}
