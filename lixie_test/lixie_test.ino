@@ -3,9 +3,10 @@
 // press the button it will change to a new pixel animation.  Note that you need to press the
 // button once to start the first animation!
 
-#include "FastLED.h"
+#include <FastLED.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 //#include <EEPROM.h>
@@ -15,6 +16,8 @@ const char* password = "laserlaser";
 WiFiServer server(80);
 
 //EEPROMClass  MODE("eeprom0", 0x1000);
+
+#define NTP_UPDATE_INTERVAL     86400
 
 #define BUTTON_PIN   T5   // Digital IO pin connected to the button.  This will be
 #define TRIGGER_PIN  13   // driven with a pull-up resistor so the switch should
@@ -49,41 +52,44 @@ CRGB testColors[] = {
     CRGB::Blue,
 };
 
+byte currentColor = 0;
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
+
+unsigned long lastTimeUpdate = 0;
+
+bool twelveHourTime = true;
+
 uint8_t displayMode = 0;
 bool buttonState = HIGH;   // LOW = pressed
 bool buttonHeld = false;
 unsigned long lastButtonCheck = 0;
 unsigned long buttonDownTime = 0;
-float brightness = 0.0;
+byte brightnessMode = 0;
+const byte brightnessValues[] = {255, 80, 0};
 
-void setup() {
-    Serial.begin(115200);
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
-    pinMode(LLC, OUTPUT);
-    digitalWrite(LLC, LOW);
 
+void setupLEDs() {
+    Serial.println("Initializing FastLED neopixel strips...");
     FastLED.addLeds<NEOPIXEL, PIXEL_PIN_1>(ledStrips[0], PIXELS_PER_STRIP);
     FastLED.addLeds<NEOPIXEL, PIXEL_PIN_2>(ledStrips[1], PIXELS_PER_STRIP);
     FastLED.addLeds<NEOPIXEL, PIXEL_PIN_3>(ledStrips[2], PIXELS_PER_STRIP);
+}
 
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
-
+void setupWifi() {
+    Serial.printf("Connecting to %s...", ssid);
     WiFi.begin(ssid, password);
-
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
     }
+    Serial.println();
+    Serial.printf("Connected! IP address: %s\r\n", WiFi.localIP());
+}
 
-    Serial.println("");
-    Serial.println("WiFi connected.");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
-
-    ArduinoOTA
-    .onStart([]() {
+void setupArduinoOTA() {
+    ArduinoOTA.onStart([]() {
         String type;
         if (ArduinoOTA.getCommand() == U_FLASH)
             type = "sketch";
@@ -109,13 +115,49 @@ void setup() {
     });
 
     ArduinoOTA.begin();
+}
+
+void setupNtpClient() {
+    Serial.println("Initializing NTP client...");
+    timeClient.begin();
+    timeClient.setTimeOffset(-8 * 3600);
+    timeClient.setUpdateInterval(NTP_UPDATE_INTERVAL);
+}
+
+void getNtpCurrentTime() {
+    Serial.println("Requesting NTP time...");
+    for (byte i = 1; i < 4; i++) {
+        if (timeClient.update()) {
+            return;
+        } else {
+            Serial.printf("Retry %d\r\n", i);
+            timeClient.forceUpdate();
+        }
+    }
+    Serial.println("Failed to connect to NTP server");
+}
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println();
+
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+    pinMode(LLC, OUTPUT);
+    digitalWrite(LLC, LOW);
+
+    setupLEDs();
+    setupWifi();
+    setupArduinoOTA();
+
+    setupNtpClient();
+    getNtpCurrentTime();
 
     server.begin();
 
     // displayMode = EEPROM.read(DISPLAY_MODE_ADDR);
 }
 
-boolean checkModeChange() {
+void handleButtons() {
     unsigned long now = millis();
 
     // check if we've been holding the button for a while
@@ -124,130 +166,159 @@ boolean checkModeChange() {
         // buttonState = HIGH;
         buttonHeld = true;
 
-        if(brightness == 0)
-            brightness = 1.0;
-        else
-            brightness -= 0.7;
+        brightnessMode = (brightnessMode + 1) % 3;
 
-        if(brightness <= 0)
-            brightness = 0;
-
-        return false;
+        return;
     }
 
     int touchVal = touchRead(T5);
     bool newState = touchVal > 20;
 
-    if(newState == buttonState || lastButtonCheck > now - BUTTON_COOLDOWN)
-        return false;
+    if (newState == buttonState || lastButtonCheck > now - BUTTON_COOLDOWN)
+        return;
 
     Serial.printf("Touch Sensor: %d\r\n", touchVal);
 
     lastButtonCheck = now;
     buttonState = newState;
 
-    if(newState == LOW) {
+    if (newState == LOW) {
         buttonDownTime = millis();
     } else {
-        if(buttonHeld) {
+        if (buttonHeld) {
             buttonHeld = false;
-            return false;
-        }
-        if(brightness == 0) {
-            brightness = 1.0;
-            return false;
-        }
-        if(now - buttonDownTime < BUTTON_LONG_PRESS) {
-            displayMode++;
+        } else if (brightnessMode == 2) {
+            brightnessMode = 0;
+        } else if(now - buttonDownTime < BUTTON_LONG_PRESS) {
+            currentColor = (currentColor + 1) % 4;
+            displayTime(true);
 
-            if (displayMode >= DIGIT_COUNT * 10)
-                displayMode = 0;
-
+            // displayMode = (displayMode + 1) % 2;
 
             // Serial.printf("Current mode: %u\n", displayMode);
 
             //EEPROM.write(DISPLAY_MODE_ADDR, displayMode);
-            return true;
+        }
+    }
+}
+
+// check for new client connections
+void handleWebRequets() {
+    WiFiClient client = server.available();
+
+    if (!client)
+        return;
+                                              // if you get a client,
+    Serial.println("New Client.");        // print a message out the serial port
+    String currentLine = "";              // make a String to hold incoming data from the client
+    while (client.connected()) {          // loop while the client's connected
+        if (client.available()) {         // if there's bytes to read from the client,
+            char c = client.read();       // read a byte, then
+            Serial.write(c);              // print it out the serial monitor
+            if (c == '\n') {              // if the byte is a newline character
+
+                // if the current line is blank, you got two newline characters in a row.
+                // that's the end of the client HTTP request, so send a response:
+                if (currentLine.length() == 0) {
+                    // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+                    // and a content-type so the client knows what's coming, then a blank line:
+                    client.println("HTTP/1.1 200 OK");
+                    client.println("Content-type:text/html");
+                    client.println();
+
+                    // the content of the HTTP response follows the header:
+                    client.print("Click <a href=\"/H\">here</a> to turn the LED on pin 5 on.<br>");
+                    client.print("Click <a href=\"/L\">here</a> to turn the LED on pin 5 off.<br>");
+
+                    // The HTTP response ends with another blank line:
+                    client.println();
+                    // break out of the while loop:
+                    break;
+                } else {    // if you got a newline, then clear currentLine:
+                    currentLine = "";
+                }
+            } else if (c != '\r') {  // if you got anything else but a carriage return character,
+                currentLine += c;      // add it to the end of the currentLine
+            }
+
+            // TODO: make sure displayMode is constrained properly
+
+            // Check to see if the client request was "GET /H" or "GET /L":
+            if (currentLine.endsWith("GET /H")) {
+                displayMode++;               // GET /H turns the LED on
+            }
+            if (currentLine.endsWith("GET /L")) {
+                displayMode--;                // GET /L turns the LED off
+            }
+        }
+    }
+    // close the connection:
+    client.stop();
+    Serial.println("Client Disconnected.");
+}
+
+void displayTime(bool forceUpdate) {
+    uint32_t now = millis() / 1000;
+    if (now != lastTimeUpdate || forceUpdate) {
+        lastTimeUpdate = now;
+
+        int hours = timeClient.getHours();
+        int minutes = timeClient.getMinutes();
+        int seconds = timeClient.getSeconds();
+        byte hour0;
+        if (twelveHourTime) {
+            hours %= 12;
+            hour0 = hours < 10 ? 255 : 1;   // don't display leading 0
+        } else {
+            hour0 = hours / 10;
         }
 
+        CRGB color = testColors[currentColor];
+        color.nscale8(brightnessValues[brightnessMode]);
+        setAllDigits(
+            hour0,
+            hours % 10,
+            minutes / 10,
+            minutes % 10,
+            seconds / 10,
+            seconds % 10,
+            &color
+        );
     }
-    return false;
+}
+
+void displayDate(bool forceUpdate) {
+    // date!
 }
 
 void loop() {
-
     ArduinoOTA.handle();
+    handleWebRequets();
+    handleButtons();
 
-    WiFiClient client = server.available();   // listen for incoming clients
-
-    if (client) {                             // if you get a client,
-        Serial.println("New Client.");        // print a message out the serial port
-        String currentLine = "";              // make a String to hold incoming data from the client
-        while (client.connected()) {          // loop while the client's connected
-            if (client.available()) {         // if there's bytes to read from the client,
-                char c = client.read();       // read a byte, then
-                Serial.write(c);              // print it out the serial monitor
-                if (c == '\n') {              // if the byte is a newline character
-
-                    // if the current line is blank, you got two newline characters in a row.
-                    // that's the end of the client HTTP request, so send a response:
-                    if (currentLine.length() == 0) {
-                        // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-                        // and a content-type so the client knows what's coming, then a blank line:
-                        client.println("HTTP/1.1 200 OK");
-                        client.println("Content-type:text/html");
-                        client.println();
-
-                        // the content of the HTTP response follows the header:
-                        client.print("Click <a href=\"/H\">here</a> to turn the LED on pin 5 on.<br>");
-                        client.print("Click <a href=\"/L\">here</a> to turn the LED on pin 5 off.<br>");
-
-                        // The HTTP response ends with another blank line:
-                        client.println();
-                        // break out of the while loop:
-                        break;
-                    } else {    // if you got a newline, then clear currentLine:
-                        currentLine = "";
-                    }
-                } else if (c != '\r') {  // if you got anything else but a carriage return character,
-                    currentLine += c;      // add it to the end of the currentLine
-                }
-
-                // TODO: make sure displayMode is constrained properly
-
-                // Check to see if the client request was "GET /H" or "GET /L":
-                if (currentLine.endsWith("GET /H")) {
-                    displayMode++;               // GET /H turns the LED on
-                }
-                if (currentLine.endsWith("GET /L")) {
-                    displayMode--;                // GET /L turns the LED off
-                }
-            }
-        }
-        // close the connection:
-        client.stop();
-        Serial.println("Client Disconnected.");
-    }
-
-    if (checkModeChange()) {
-        byte digitIndex = displayMode / 10;
-        byte digitValue = displayMode % 10;
-
-        setDigit(digitIndex, digitValue, testColors[digitValue % 4]);
-    }
-
+    if (displayMode == 0)
+        displayTime(false);
+    else
+        displayDate(false);
 }
 
 void clearPixels(byte stripIndex, byte offset, byte count) {
     for (byte i = 0; i < count; i++) {
         ledStrips[stripIndex][i + offset] = CRGB::Black;
-        // *strip[i + offset] = CRGB::Black;
     }
 }
 
-void setDigit(byte index, byte value, CRGB c) {
+void setAllDigits(byte val0, byte val1, byte val2, byte val3, byte val4, byte val5, CRGB *color) {
+    setDigit(0, val0, color);
+    setDigit(1, val1, color);
+    setDigit(2, val2, color);
+    setDigit(3, val3, color);
+    setDigit(4, val4, color);
+    setDigit(5, val5, color);
+}
+
+void setDigit(byte index, byte value, CRGB *color) {
     byte stripIndex = index / DIGITS_PER_STRIP;
-    // Serial.printf("stripIndex: %u\r\n", stripIndex);
 
     // digit  offsets
     // 0      5, 15
@@ -264,14 +335,16 @@ void setDigit(byte index, byte value, CRGB c) {
     byte pixelOffset = (index % DIGITS_PER_STRIP) * PIXELS_PER_DIGIT;
     clearPixels(stripIndex, pixelOffset, PIXELS_PER_DIGIT);
 
-    byte isOdd = value % 2;
-    byte halfValue = value / 2;
-    // even numbers count up from 5, odd numbers count down from 4
-    byte pixel0 = (isOdd * (4 - halfValue)) + ((1 - isOdd) * (5 + halfValue)) + pixelOffset;
-    byte pixel1 = pixel0 + 10;
+    if (value < 10) {
+        byte isOdd = value % 2;
+        byte halfValue = value / 2;
+        // even numbers count up from 5, odd numbers count down from 4
+        byte pixel0 = (isOdd * (4 - halfValue)) + ((1 - isOdd) * (5 + halfValue)) + pixelOffset;
+        byte pixel1 = pixel0 + 10;
 
-    ledStrips[stripIndex][pixel0] = c;
-    ledStrips[stripIndex][pixel1] = c;
+        ledStrips[stripIndex][pixel0] = *color;
+        ledStrips[stripIndex][pixel1] = *color;
+    }
 
     FastLED.show();
 }
