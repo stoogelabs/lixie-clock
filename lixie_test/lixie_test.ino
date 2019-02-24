@@ -3,7 +3,7 @@
 // press the button it will change to a new pixel animation.  Note that you need to press the
 // button once to start the first animation!
 
-#include <NeoPixelBus.h>
+#include "FastLED.h"
 //#include <EEPROM.h>
 
 //EEPROMClass  MODE("eeprom0", 0x1000);
@@ -32,19 +32,14 @@
 
 #define DISPLAY_MODE_ADDR  0
 
-// Parameter 1 = number of pixels in strip,  neopixel stick has 8
-// Parameter 2 = pin number (most are valid)
-// Parameter 3 = pixel type flags, add together as needed:
-//   NEO_RGB     Pixels are wired for RGB bitstream
-//   NEO_GRB     Pixels are wired for GRB bitstream, correct for neopixel stick
-//   NEO_KHZ400  400 KHz bitstream (e.g. FLORA pixels)
-//   NEO_KHZ800  800 KHz bitstream (e.g. High Density LED strip), correct for neopixel stick
+CRGB ledStrips[STRIP_COUNT][PIXELS_PER_STRIP];
 
-NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip1(PIXELS_PER_STRIP, PIXEL_PIN_1);
-NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip2(PIXELS_PER_STRIP, PIXEL_PIN_2);
-NeoPixelBus<NeoGrbFeature, NeoWs2813Method> strip3(PIXELS_PER_STRIP, PIXEL_PIN_3);
-
-NeoPixelBus<NeoGrbFeature, NeoWs2813Method>* pixelStrips[] = {&strip1, &strip2, &strip3};
+CRGB testColors[] = {
+    CRGB::White,
+    CRGB::Red,
+    CRGB::Green,
+    CRGB::Blue,
+};
 
 uint8_t displayMode = 0;
 bool buttonState = HIGH;   // LOW = pressed
@@ -74,10 +69,9 @@ void setup() {
     pinMode(LLC, OUTPUT);
     digitalWrite(LLC, LOW);
 
-    for (byte i = 0; i < STRIP_COUNT; i++) {
-      pixelStrips[i]->Begin();
-      pixelStrips[i]->Show(); // Initialize all pixels to 'off'
-    }
+    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_1>(ledStrips[0], PIXELS_PER_STRIP);
+    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_2>(ledStrips[1], PIXELS_PER_STRIP);
+    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_3>(ledStrips[2], PIXELS_PER_STRIP);
 
     Serial.println();
     Serial.println();
@@ -111,7 +105,7 @@ void setup() {
         Serial.println("\nEnd");
     })
     .onProgress([](unsigned int progress, unsigned int total) {
-        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+        Serial.printf("Progress: %u%%\r\n", (progress / (total / 100)));
     })
     .onError([](ota_error_t error) {
         Serial.printf("Error[%u]: ", error);
@@ -125,8 +119,6 @@ void setup() {
     ArduinoOTA.begin();
 
     server.begin();
-
-
 
     // displayMode = EEPROM.read(DISPLAY_MODE_ADDR);
 }
@@ -151,11 +143,13 @@ boolean checkModeChange() {
         return false;
     }
 
-    bool newState;
-    if (touchRead(T5) > 20) newState = HIGH;
-    if (touchRead(T5) <= 20) newState = LOW;
+    int touchVal = touchRead(T5);
+    bool newState = touchVal > 20;
+
     if(newState == buttonState || lastButtonCheck > now - BUTTON_COOLDOWN)
         return false;
+
+    Serial.printf("Touch Sensor: %d\r\n", touchVal);
 
     lastButtonCheck = now;
     buttonState = newState;
@@ -177,6 +171,9 @@ boolean checkModeChange() {
             if (displayMode >= DIGIT_COUNT * 10)
                 displayMode = 0;
 
+
+            // Serial.printf("Current mode: %u\n", displayMode);
+
             //EEPROM.write(DISPLAY_MODE_ADDR, displayMode);
             return true;
         }
@@ -192,13 +189,13 @@ void loop() {
     WiFiClient client = server.available();   // listen for incoming clients
 
     if (client) {                             // if you get a client,
-        Serial.println("New Client.");           // print a message out the serial port
-        String currentLine = "";                // make a String to hold incoming data from the client
-        while (client.connected()) {            // loop while the client's connected
-            if (client.available()) {             // if there's bytes to read from the client,
-                char c = client.read();             // read a byte, then
-                Serial.write(c);                    // print it out the serial monitor
-                if (c == '\n') {                    // if the byte is a newline character
+        Serial.println("New Client.");        // print a message out the serial port
+        String currentLine = "";              // make a String to hold incoming data from the client
+        while (client.connected()) {          // loop while the client's connected
+            if (client.available()) {         // if there's bytes to read from the client,
+                char c = client.read();       // read a byte, then
+                Serial.write(c);              // print it out the serial monitor
+                if (c == '\n') {              // if the byte is a newline character
 
                     // if the current line is blank, you got two newline characters in a row.
                     // that's the end of the client HTTP request, so send a response:
@@ -224,6 +221,8 @@ void loop() {
                     currentLine += c;      // add it to the end of the currentLine
                 }
 
+                // TODO: make sure displayMode is constrained properly
+
                 // Check to see if the client request was "GET /H" or "GET /L":
                 if (currentLine.endsWith("GET /H")) {
                     displayMode++;               // GET /H turns the LED on
@@ -237,54 +236,50 @@ void loop() {
         client.stop();
         Serial.println("Client Disconnected.");
     }
-    Serial.println(touchRead(T5));  // get value using T0
 
-    byte digitIndex = displayMode / 10;
-    byte digitValue = displayMode % 10;
+    if (checkModeChange()) {
+        byte digitIndex = displayMode / 10;
+        byte digitValue = displayMode % 10;
 
-    RgbColor testColors[] = {
-      RgbColor(255 * brightness, 255 * brightness, 255 * brightness), // white
-      RgbColor(255 * brightness, 0 * brightness, 0 * brightness), // red
-      RgbColor(30 * brightness, 255 * brightness, 0 * brightness), // green
-      RgbColor(0, 30 * brightness, 255 * brightness), // blue
-    };
+        setDigit(digitIndex, digitValue, testColors[digitValue % 4]);
+    }
 
-    setDigit(digitIndex, digitValue, testColors[digitValue % 4]);
 }
 
-void clearPixels(NeoPixelBus<NeoGrbFeature, NeoWs2813Method> *strip, byte offset, byte count) {
-  for (byte i = 0; i < count; i++) {
-      strip->SetPixelColor(i + offset, 0);
-  }
+void clearPixels(byte stripIndex, byte offset, byte count) {
+    for (byte i = 0; i < count; i++) {
+        ledStrips[stripIndex][i + offset] = CRGB::Black;
+        // *strip[i + offset] = CRGB::Black;
+    }
 }
 
-void setDigit(byte index, byte value, RgbColor c) {
-  if (checkModeChange())
-      return;
+void setDigit(byte index, byte value, CRGB c) {
+    byte stripIndex = index / DIGITS_PER_STRIP;
+    // Serial.printf("stripIndex: %u\r\n", stripIndex);
 
-  byte stripIndex = index / DIGITS_PER_STRIP;
+    // digit  offsets
+    // 0      0, 10
+    // 1      9, 19
+    // 2      1, 11
+    // 3      8, 18
+    // 4      2, 12
+    // 5      7, 17
+    // 6      3, 13
+    // 7      6, 16
+    // 8      4, 14
+    // 9      5, 15
 
-  NeoPixelBus<NeoGrbFeature, NeoWs2813Method> *strip = pixelStrips[stripIndex];
+    byte pixelOffset = (index % DIGITS_PER_STRIP) * PIXELS_PER_DIGIT;
+    clearPixels(stripIndex, pixelOffset, PIXELS_PER_DIGIT);
 
-  // digit  offsets
-  // 0      0, 10
-  // 1      9, 19
-  // 2      8, 18
-  // 3      7, 17
-  // 4      6, 16
-  // 5      5, 15
-  // 6      4, 14
-  // 7      3, 13
-  // 8      2, 12
-  // 9      1, 11
+    byte isEven = value % 2;
+    byte halfValue = value / 2;
+    // even numbers count up from 0, odd numbers count down from 9
+    byte pixel0 = (isEven * (9 - halfValue)) + ((1 - isEven) * halfValue) + pixelOffset;
+    byte pixel1 = pixel0 + 10;
 
-  byte pixelOffset = (index % DIGITS_PER_STRIP) * PIXELS_PER_DIGIT;
-  byte pixel0 = ((10 - value) % 10) + pixelOffset;
-  byte pixel1 = pixel0 + 10;
+    ledStrips[stripIndex][pixel0] = c;
+    ledStrips[stripIndex][pixel1] = c;
 
-  clearPixels(strip, pixelOffset, PIXELS_PER_DIGIT);
-
-  strip->SetPixelColor(pixel0, c);
-  strip->SetPixelColor(pixel1, c);
-  strip->Show();
+    FastLED.show();
 }
