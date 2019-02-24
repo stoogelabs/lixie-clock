@@ -4,7 +4,15 @@
 // button once to start the first animation!
 
 #include "FastLED.h"
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 //#include <EEPROM.h>
+
+const char* ssid     = "4wire";
+const char* password = "laserlaser";
+WiFiServer server(80);
 
 //EEPROMClass  MODE("eeprom0", 0x1000);
 
@@ -48,24 +56,9 @@ unsigned long lastButtonCheck = 0;
 unsigned long buttonDownTime = 0;
 float brightness = 0.0;
 
-#include <WiFi.h>
-#include <ESPmDNS.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
-
-const char* ssid     = "4wire";
-const char* password = "laserlaser";
-
-WiFiServer server(80);
-
-int value = 0;
-
 void setup() {
     Serial.begin(115200);
     pinMode(BUTTON_PIN, INPUT_PULLUP);
-    pinMode(PIXEL_PIN_1, OUTPUT);
-    pinMode(PIXEL_PIN_2, OUTPUT);
-    pinMode(PIXEL_PIN_3, OUTPUT);
     pinMode(LLC, OUTPUT);
     digitalWrite(LLC, LOW);
 
@@ -73,7 +66,6 @@ void setup() {
     FastLED.addLeds<NEOPIXEL, PIXEL_PIN_2>(ledStrips[1], PIXELS_PER_STRIP);
     FastLED.addLeds<NEOPIXEL, PIXEL_PIN_3>(ledStrips[2], PIXELS_PER_STRIP);
 
-    Serial.println();
     Serial.println();
     Serial.print("Connecting to ");
     Serial.println(ssid);
@@ -258,24 +250,24 @@ void setDigit(byte index, byte value, CRGB c) {
     // Serial.printf("stripIndex: %u\r\n", stripIndex);
 
     // digit  offsets
-    // 0      0, 10
-    // 1      9, 19
-    // 2      1, 11
-    // 3      8, 18
-    // 4      2, 12
-    // 5      7, 17
-    // 6      3, 13
-    // 7      6, 16
-    // 8      4, 14
-    // 9      5, 15
+    // 0      5, 15
+    // 1      4, 14
+    // 2      6, 16
+    // 3      3, 13
+    // 4      7, 17
+    // 5      2, 12
+    // 6      8, 18
+    // 7      1, 11
+    // 8      9, 19
+    // 9      0, 10
 
     byte pixelOffset = (index % DIGITS_PER_STRIP) * PIXELS_PER_DIGIT;
     clearPixels(stripIndex, pixelOffset, PIXELS_PER_DIGIT);
 
-    byte isEven = value % 2;
+    byte isOdd = value % 2;
     byte halfValue = value / 2;
-    // even numbers count up from 0, odd numbers count down from 9
-    byte pixel0 = (isEven * (9 - halfValue)) + ((1 - isEven) * halfValue) + pixelOffset;
+    // even numbers count up from 5, odd numbers count down from 4
+    byte pixel0 = (isOdd * (4 - halfValue)) + ((1 - isOdd) * (5 + halfValue)) + pixelOffset;
     byte pixel1 = pixel0 + 10;
 
     ledStrips[stripIndex][pixel0] = c;
