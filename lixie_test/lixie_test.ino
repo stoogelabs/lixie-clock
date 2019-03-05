@@ -3,12 +3,15 @@
 // press the button it will change to a new pixel animation.  Note that you need to press the
 // button once to start the first animation!
 
-#include <FastLED.h>
-#include <WiFi.h>
-#include <ESPmDNS.h>
-#include <NTPClient.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
+#include "FastLED.h"
+#include "WiFi.h"
+#include "ESPmDNS.h"
+#include "NTPClient.h"
+// #include "time.h"
+#include "WiFiUdp.h"
+#include "ArduinoOTA.h"
+// #include "BluetoothSerial.h"
+#include "driver/touch_pad.h"
 //#include <EEPROM.h>
 
 const char* ssid     = "4wire";
@@ -19,10 +22,11 @@ WiFiServer server(80);
 
 #define NTP_UPDATE_INTERVAL     86400
 
-#define BUTTON_PIN   T5   // Digital IO pin connected to the button.  This will be
-#define TRIGGER_PIN  13   // driven with a pull-up resistor so the switch should
-                          // pull the pin to ground momentarily.  On a high -> low
-                          // transition the button press logic will execute.
+
+#define BUTTON_PIN_1  T5    // Digital IO pin connected to the touchpad.
+#define BUTTON_PIN_2  T4    // This will be driven with a pull-up resistor so the switch should
+                            // pull the pin to ground momentarily.  On a high -> low
+                            // transition the button press logic will execute.
 
 #define PIXEL_PIN_1    15   // Digital IO pin connected to the NeoPixels.
 #define PIXEL_PIN_2    5
@@ -54,18 +58,20 @@ CRGB testColors[] = {
 
 byte currentColor = 0;
 
+// BluetoothSerial SerialBT;
+
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
 
-unsigned long lastTimeUpdate = 0;
+uint32_t long lastTimeUpdate = 0;
 
-bool twelveHourTime = true;
+bool twelveHourTime = false;
 
 uint8_t displayMode = 0;
-bool buttonState = HIGH;   // LOW = pressed
-bool buttonHeld = false;
-unsigned long lastButtonCheck = 0;
-unsigned long buttonDownTime = 0;
+bool buttonState[] = {HIGH, HIGH};   // LOW = pressed
+bool buttonHeld[] = {false, false};
+uint32_t lastButtonCheck[] = {0, 0};
+uint32_t buttonDownTime[] = {0, 0};
 byte brightnessMode = 0;
 const byte brightnessValues[] = {255, 80, 0};
 
@@ -85,7 +91,10 @@ void setupWifi() {
         Serial.print(".");
     }
     Serial.println();
-    Serial.printf("Connected! IP address: %s\r\n", WiFi.localIP());
+    //Serial.printf("Connected! IP address: %s\r\n", WiFi.localIP());
+    Serial.println("Connected!");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
 }
 
 void setupArduinoOTA() {
@@ -102,7 +111,7 @@ void setupArduinoOTA() {
     .onEnd([]() {
         Serial.println("\nEnd");
     })
-    .onProgress([](unsigned int progress, unsigned int total) {
+    .onProgress([](uint16_t progress, uint16_t total) {
         Serial.printf("Progress: %u%%\r\n", (progress / (total / 100)));
     })
     .onError([](ota_error_t error) {
@@ -138,10 +147,10 @@ void getNtpCurrentTime() {
 }
 
 void setup() {
+    // SerialBT.begin("ESP32-test");
     Serial.begin(115200);
     Serial.println();
 
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
     pinMode(LLC, OUTPUT);
     digitalWrite(LLC, LOW);
 
@@ -158,48 +167,78 @@ void setup() {
 }
 
 void handleButtons() {
-    unsigned long now = millis();
+    uint32_t now = millis();
 
-    // check if we've been holding the button for a while
-    if(!buttonHeld && buttonState == LOW && now > buttonDownTime + BUTTON_LONG_PRESS) {
-        // pretend the button has actually been released
-        // buttonState = HIGH;
-        buttonHeld = true;
+    for (int i=0; i < 2; i++) {
+        // check if we've been holding the button for a while
+        if(!buttonHeld[i] && buttonState[i] == LOW && now > buttonDownTime[i] + BUTTON_LONG_PRESS) {
+            // pretend the button has actually been released
+            // buttonState = HIGH;
+            buttonHeld[i] = true;
 
-        brightnessMode = (brightnessMode + 1) % 3;
 
-        return;
-    }
+            buttonsFunctions(i, true);
 
-    int touchVal = touchRead(T5);
-    bool newState = touchVal > 20;
+            return;
+        }
 
-    if (newState == buttonState || lastButtonCheck > now - BUTTON_COOLDOWN)
-        return;
+        int touchVal[] = {100, 100};
 
-    Serial.printf("Touch Sensor: %d\r\n", touchVal);
 
-    lastButtonCheck = now;
-    buttonState = newState;
+        touchVal[1] = touchRead(BUTTON_PIN_1);
+        delay(10);
+        touchVal[0] = touchRead(BUTTON_PIN_2);
+        delay(10);
 
-    if (newState == LOW) {
-        buttonDownTime = millis();
-    } else {
-        if (buttonHeld) {
-            buttonHeld = false;
-        } else if (brightnessMode == 2) {
-            brightnessMode = 0;
-        } else if(now - buttonDownTime < BUTTON_LONG_PRESS) {
-            currentColor = (currentColor + 1) % 4;
-            displayTime(true);
+        // TODO: ignore 0 values (don't update measurement at all)
 
-            // displayMode = (displayMode + 1) % 2;
+        bool newState = touchVal[i] > 20;
 
-            // Serial.printf("Current mode: %u\n", displayMode);
+        if (!(newState == buttonState[i] || lastButtonCheck[i] > now - BUTTON_COOLDOWN)) {
 
-            //EEPROM.write(DISPLAY_MODE_ADDR, displayMode);
+
+            //Serial.printf("Touch Sensor #1: %d\r\n", touchVal[1]);
+            //Serial.printf("Touch Sensor #2: %d\r\n", touchVal[0]);
+            // SerialBT.printf("Touch Sensor: %d\r\n", touchVal[i]);
+
+
+            lastButtonCheck[i] = now;
+            buttonState[i] = newState;
+
+            if (newState == LOW) {
+                buttonDownTime[i] = millis();
+                // SerialBT.println("Touch ME!");
+                // SerialBT.println(i);
+            } else {
+                if (buttonHeld[i]) {
+                    buttonHeld[i] = false;
+                } else if (now - buttonDownTime[i] < BUTTON_LONG_PRESS) {
+                    buttonsFunctions(i, false);
+
+
+                    // displayMode = (displayMode + 1) % 2;
+
+                    // Serial.printf("Current mode: %u\n", displayMode);
+
+                    //EEPROM.write(DISPLAY_MODE_ADDR, displayMode);
+                }
+            }
         }
     }
+}
+// what do the buttons actually do, bob???
+void buttonsFunctions(byte button, bool longPress) {
+    if (button == 0){
+        if (longPress == true){
+            brightnessMode = (brightnessMode + 1) % 3;
+        } else if (brightnessMode <= 2) {
+            brightnessMode = 0;
+        } else {
+            currentColor = (currentColor + 1) % 4;
+            displayTime(true);
+        }
+    }
+    if (button == 1){} //date stuff
 }
 
 // check for new client connections
@@ -208,14 +247,14 @@ void handleWebRequets() {
 
     if (!client)
         return;
-                                              // if you get a client,
-    Serial.println("New Client.");        // print a message out the serial port
-    String currentLine = "";              // make a String to hold incoming data from the client
-    while (client.connected()) {          // loop while the client's connected
-        if (client.available()) {         // if there's bytes to read from the client,
-            char c = client.read();       // read a byte, then
-            Serial.write(c);              // print it out the serial monitor
-            if (c == '\n') {              // if the byte is a newline character
+                                        // if you get a client,
+    Serial.println("New Client.");      // print a message out the serial port
+    String currentLine = "";            // make a String to hold incoming data from the client
+    while (client.connected()) {        // loop while the client's connected
+        if (client.available()) {       // if there's bytes to read from the client,
+            char c = client.read();     // read a byte, then
+            Serial.write(c);            // print it out the serial monitor
+            if (c == '\n') {            // if the byte is a newline character
 
                 // if the current line is blank, you got two newline characters in a row.
                 // that's the end of the client HTTP request, so send a response:
@@ -288,13 +327,26 @@ void displayTime(bool forceUpdate) {
 }
 
 void displayDate(bool forceUpdate) {
+    CRGB color = testColors[currentColor];
+    color.nscale8(brightnessValues[brightnessMode]);
     // date!
+}
+
+void displayNumber(uint32_t value) {
+    CRGB color = testColors[currentColor];
+    color.nscale8(brightnessValues[brightnessMode]);
+
+    for (int8_t i = 5; i >= 0; i--) {
+        setDigit(i, value % 10, &color);
+        value /= 10;
+    }
 }
 
 void loop() {
     ArduinoOTA.handle();
     handleWebRequets();
     handleButtons();
+    // SerialBT.printf("Touch Sensor: %d\r\n", touchRead(T5));
 
     if (displayMode == 0)
         displayTime(false);
