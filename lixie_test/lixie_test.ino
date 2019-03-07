@@ -7,11 +7,10 @@
 #include "WiFi.h"
 #include "ESPmDNS.h"
 #include "NTPClient.h"
-// #include "time.h"
+#include "TimeLib.h"
 #include "WiFiUdp.h"
 #include "ArduinoOTA.h"
 // #include "BluetoothSerial.h"
-#include "driver/touch_pad.h"
 //#include <EEPROM.h>
 
 const char* ssid     = "4wire";
@@ -21,12 +20,6 @@ WiFiServer server(80);
 //EEPROMClass  MODE("eeprom0", 0x1000);
 
 #define NTP_UPDATE_INTERVAL     86400
-
-
-#define BUTTON_PIN_1  T5    // Digital IO pin connected to the touchpad.
-#define BUTTON_PIN_2  T4    // This will be driven with a pull-up resistor so the switch should
-                            // pull the pin to ground momentarily.  On a high -> low
-                            // transition the button press logic will execute.
 
 #define PIXEL_PIN_1    15   // Digital IO pin connected to the NeoPixels.
 #define PIXEL_PIN_2    5
@@ -39,9 +32,6 @@ WiFiServer server(80);
 #define STRIP_COUNT 3
 #define DIGIT_COUNT STRIP_COUNT * DIGITS_PER_STRIP
 #define PIXELS_PER_STRIP PIXELS_PER_DIGIT * DIGITS_PER_STRIP
-
-#define BUTTON_COOLDOWN  100 // minimum time in miliseconds between button presses (to reduce noise)
-#define BUTTON_LONG_PRESS  600 // miliseconds between button down and up to count as a long press
 
 #define TWO_PI 6.28318530718
 
@@ -68,13 +58,11 @@ uint32_t long lastTimeUpdate = 0;
 bool twelveHourTime = false;
 
 uint8_t displayMode = 0;
-bool buttonState[] = {HIGH, HIGH};   // LOW = pressed
-bool buttonHeld[] = {false, false};
-uint32_t lastButtonCheck[] = {0, 0};
-uint32_t buttonDownTime[] = {0, 0};
+uint32_t lastButtonCheck = 0;
+TouchButtonManager buttonManager({T5, T4});
+
 byte brightnessMode = 0;
 const byte brightnessValues[] = {255, 80, 0};
-
 
 void setupLEDs() {
     Serial.println("Initializing FastLED neopixel strips...");
@@ -153,6 +141,7 @@ void setup() {
 
     pinMode(LLC, OUTPUT);
     digitalWrite(LLC, LOW);
+    buttonManager.registerButtonHandler(onButtonPress);
 
     setupLEDs();
     setupWifi();
@@ -166,70 +155,12 @@ void setup() {
     // displayMode = EEPROM.read(DISPLAY_MODE_ADDR);
 }
 
-void handleButtons() {
-    uint32_t now = millis();
-
-    for (int i=0; i < 2; i++) {
-        // check if we've been holding the button for a while
-        if(!buttonHeld[i] && buttonState[i] == LOW && now > buttonDownTime[i] + BUTTON_LONG_PRESS) {
-            // pretend the button has actually been released
-            // buttonState = HIGH;
-            buttonHeld[i] = true;
-
-
-            buttonsFunctions(i, true);
-
-            return;
-        }
-
-        int touchVal[] = {100, 100};
-
-
-        touchVal[1] = touchRead(BUTTON_PIN_1);
-        delay(10);
-        touchVal[0] = touchRead(BUTTON_PIN_2);
-        delay(10);
-
-        // TODO: ignore 0 values (don't update measurement at all)
-
-        bool newState = touchVal[i] > 20;
-
-        if (!(newState == buttonState[i] || lastButtonCheck[i] > now - BUTTON_COOLDOWN)) {
-
-
-            //Serial.printf("Touch Sensor #1: %d\r\n", touchVal[1]);
-            //Serial.printf("Touch Sensor #2: %d\r\n", touchVal[0]);
-            // SerialBT.printf("Touch Sensor: %d\r\n", touchVal[i]);
-
-
-            lastButtonCheck[i] = now;
-            buttonState[i] = newState;
-
-            if (newState == LOW) {
-                buttonDownTime[i] = millis();
-                // SerialBT.println("Touch ME!");
-                // SerialBT.println(i);
-            } else {
-                if (buttonHeld[i]) {
-                    buttonHeld[i] = false;
-                } else if (now - buttonDownTime[i] < BUTTON_LONG_PRESS) {
-                    buttonsFunctions(i, false);
-
-
-                    // displayMode = (displayMode + 1) % 2;
-
-                    // Serial.printf("Current mode: %u\n", displayMode);
-
-                    //EEPROM.write(DISPLAY_MODE_ADDR, displayMode);
-                }
-            }
-        }
-    }
-}
 // what do the buttons actually do, bob???
-void buttonsFunctions(byte button, bool longPress) {
-    if (button == 0){
-        if (longPress == true){
+void onButtonPress(byte button, button_event_t type) {
+    if (type == BUTTON_PRESS_RESET) {
+
+    } else if (button == 0){
+        if (type == BUTTON_PRESS_LONG){
             brightnessMode = (brightnessMode + 1) % 3;
         } else if (brightnessMode <= 2) {
             brightnessMode = 0;
@@ -237,8 +168,10 @@ void buttonsFunctions(byte button, bool longPress) {
             currentColor = (currentColor + 1) % 4;
             displayTime(true);
         }
-    }
-    if (button == 1){} //date stuff
+    } else if (button == 1) {
+
+
+    } //date stuff
 }
 
 // check for new client connections
@@ -296,6 +229,14 @@ void handleWebRequets() {
     Serial.println("Client Disconnected.");
 }
 
+void handleButtons() {
+    uint32_t now = millis();
+    if (now - lastButtonCheck < BUTTON_CHECK_INTERVAL || now < lastButtonCheck) {
+        handleButtons();
+        lastButtonCheck = now;
+    }
+}
+
 void displayTime(bool forceUpdate) {
     uint32_t now = millis() / 1000;
     if (now != lastTimeUpdate || forceUpdate) {
@@ -342,10 +283,12 @@ void displayNumber(uint32_t value) {
     }
 }
 
+
 void loop() {
     ArduinoOTA.handle();
     handleWebRequets();
     handleButtons();
+
     // SerialBT.printf("Touch Sensor: %d\r\n", touchRead(T5));
 
     if (displayMode == 0)
