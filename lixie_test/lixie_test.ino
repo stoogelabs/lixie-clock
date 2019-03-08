@@ -7,9 +7,10 @@
 #include "WiFi.h"
 #include "ESPmDNS.h"
 #include "NTPClient.h"
-#include "TimeLib.h"
+#include "Time.h"
 #include "WiFiUdp.h"
 #include "ArduinoOTA.h"
+#include "buttons.h"
 // #include "BluetoothSerial.h"
 //#include <EEPROM.h>
 
@@ -58,8 +59,10 @@ uint32_t long lastTimeUpdate = 0;
 bool twelveHourTime = false;
 
 uint8_t displayMode = 0;
-uint32_t lastButtonCheck = 0;
-TouchButtonManager buttonManager({T5, T4});
+
+// template class TouchButtonManager<2>;
+byte buttonPins[] = {T5, T4};
+TouchButtonManager<2> buttonManager(buttonPins);
 
 byte brightnessMode = 0;
 const byte brightnessValues[] = {255, 80, 0};
@@ -156,11 +159,11 @@ void setup() {
 }
 
 // what do the buttons actually do, bob???
-void onButtonPress(byte button, button_event_t type) {
-    if (type == BUTTON_PRESS_RESET) {
+void onButtonPress(byte button, button_event_t event) {
+    if (event == BUTTON_PRESS_RESET) {
 
-    } else if (button == 0){
-        if (type == BUTTON_PRESS_LONG){
+    } else if (button == 0) {
+        if (event == BUTTON_PRESS_LONG){
             brightnessMode = (brightnessMode + 1) % 3;
         } else if (brightnessMode <= 2) {
             brightnessMode = 0;
@@ -229,14 +232,6 @@ void handleWebRequets() {
     Serial.println("Client Disconnected.");
 }
 
-void handleButtons() {
-    uint32_t now = millis();
-    if (now - lastButtonCheck < BUTTON_CHECK_INTERVAL || now < lastButtonCheck) {
-        handleButtons();
-        lastButtonCheck = now;
-    }
-}
-
 void displayTime(bool forceUpdate) {
     uint32_t now = millis() / 1000;
     if (now != lastTimeUpdate || forceUpdate) {
@@ -287,7 +282,7 @@ void displayNumber(uint32_t value) {
 void loop() {
     ArduinoOTA.handle();
     handleWebRequets();
-    handleButtons();
+    buttonManager.poll();
 
     // SerialBT.printf("Touch Sensor: %d\r\n", touchRead(T5));
 
