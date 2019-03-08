@@ -172,9 +172,9 @@ void onButtonPress(byte button, button_event_t event) {
             displayTime(true);
         }
     } else if (button == 1) {
-
-
-    } //date stuff
+        // switch to next mode
+        displayMode = (displayMode + 1) % 2;
+    }
 }
 
 // check for new client connections
@@ -289,7 +289,8 @@ void loop() {
     if (displayMode == 0)
         displayTime(false);
     else
-        displayDate(false);
+        displayNumber(timeClient.getEpochTime());
+        // displayDate(false);
 }
 
 void clearPixels(byte stripIndex, byte offset, byte count) {
