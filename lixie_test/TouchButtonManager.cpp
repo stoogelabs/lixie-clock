@@ -53,8 +53,17 @@ void TouchButtonManager::poll() {
     uint32_t now = millis();
     uint32_t &lastCheck = this->lastButtonCheck;
     byte &currentButton = this->currentButton;
-    if (now - lastCheck < BUTTON_READ_DELAY || now < lastCheck) {
+    if (now - lastCheck >= BUTTON_READ_DELAY || now < lastCheck) {
         checkButton(currentButton, now);
+
+        TouchButton &button = this->buttons[currentButton];
+        Serial.printf(
+            "Read button %d: filtered = %f.2, baseline = %.2f\r\n",
+            currentButton,
+            button.filtered,
+            button.baseline
+        );
+
         lastCheck = now;
         currentButton = (currentButton + 1) % BUTTON_COUNT;
     }
@@ -70,6 +79,8 @@ bool TouchButtonManager::detectReset(uint32_t &now) {
 }
 
 void TouchButtonManager::callButtonHandler(byte index, button_event_t event) {
+    Serial.printf("Button %d: firing event %d\r\n", index, event);
+
     if (this->buttonHandler)
         this->buttonHandler(index, event);
     else
@@ -87,12 +98,12 @@ void TouchButtonManager::checkButton(byte index, uint32_t &now) {
         } else {
             uint32_t holdTime = now - button.downTime;
 
-            if (holdTime > BUTTON_RESET_HOLD_TIME) {
+            if (holdTime >= BUTTON_RESET_HOLD_TIME) {
                 // button has been down long enough for a reset,
                 // but only if all other buttons are also in this state
                 if (this->detectReset(now))
                     this->callButtonHandler(index, BUTTON_PRESS_RESET);
-            } else if (holdTime > BUTTON_LONG_HOLD_TIME) {
+            } else if (holdTime >= BUTTON_LONG_HOLD_TIME) {
                 // button has been held down long enough for a normal press,
                 // but only if no other buttons are active
                 bool othersActive = false;
@@ -110,7 +121,7 @@ void TouchButtonManager::checkButton(byte index, uint32_t &now) {
 
             // we only detect short holds here.
             // long holds are detected while the button is still active
-            if (holdTime > BUTTON_SHORT_HOLD_TIME)
+            if (holdTime >= BUTTON_SHORT_HOLD_TIME)
                 this->callButtonHandler(index, BUTTON_PRESS_SHORT);
 
             button.downTime = 0;
