@@ -10,7 +10,7 @@
 #include "Time.h"
 #include "WiFiUdp.h"
 #include "ArduinoOTA.h"
-#include "buttons.h"
+#include "TouchButtonManager.h"
 // #include "BluetoothSerial.h"
 //#include <EEPROM.h>
 
@@ -60,9 +60,7 @@ bool twelveHourTime = false;
 
 uint8_t displayMode = 0;
 
-// template class TouchButtonManager<2>;
-byte buttonPins[] = {T5, T4};
-TouchButtonManager<2> buttonManager(buttonPins);
+TouchButtonManager buttonManager;
 
 byte brightnessMode = 0;
 const byte brightnessValues[] = {255, 80, 0};
