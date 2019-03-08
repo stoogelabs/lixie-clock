@@ -11,6 +11,7 @@
 #include "WiFiUdp.h"
 #include "ArduinoOTA.h"
 #include "TouchButtonManager.h"
+#include "LixieDisplay.h"
 // #include "BluetoothSerial.h"
 //#include <EEPROM.h>
 
@@ -62,15 +63,15 @@ uint8_t displayMode = 0;
 bool displayModeChanged = true;
 
 TouchButtonManager buttonManager;
+LixieDisplay display;
 
 byte brightnessMode = 0;
 const byte brightnessValues[] = {255, 80, 0};
 
 void setupLEDs() {
-    Serial.println("Initializing FastLED neopixel strips...");
-    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_1>(ledStrips[0], PIXELS_PER_STRIP);
-    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_2>(ledStrips[1], PIXELS_PER_STRIP);
-    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_3>(ledStrips[2], PIXELS_PER_STRIP);
+    Serial.println("Initializing Lixie display...");
+    display.setColor(&testColors[currentColor]);
+    display.refresh();
 }
 
 void setupWifi() {
@@ -81,9 +82,7 @@ void setupWifi() {
         Serial.print(".");
     }
     Serial.println();
-    //Serial.printf("Connected! IP address: %s\r\n", WiFi.localIP());
-    Serial.println("Connected!");
-    Serial.print("IP address: ");
+    Serial.print("Connected! IP address: ");
     Serial.println(WiFi.localIP());
 }
 
@@ -157,6 +156,7 @@ void setup() {
     // displayMode = EEPROM.read(DISPLAY_MODE_ADDR);
 }
 
+
 // what do the buttons actually do, bob???
 void onButtonPress(byte button, button_event_t event) {
     if (event == BUTTON_PRESS_RESET) {
@@ -168,7 +168,8 @@ void onButtonPress(byte button, button_event_t event) {
             brightnessMode = 0;
         } else {
             currentColor = (currentColor + 1) % 4;
-            displayTime(true);
+            display.setColor(&testColors[currentColor]);
+            display.refresh();
         }
     } else if (button == 1) {
         // switch to next mode
@@ -247,18 +248,13 @@ void displayTime(bool forceUpdate) {
         } else {
             hour0 = hours / 10;
         }
-
-        CRGB color = testColors[currentColor];
-        color.nscale8(brightnessValues[brightnessMode]);
-        setAllDigits(
-            hour0,
-            hours % 10,
-            minutes / 10,
-            minutes % 10,
-            seconds / 10,
-            seconds % 10,
-            &color
-        );
+        display.digits[0] = hour0;
+        display.digits[1] = hours % 10;
+        display.digits[2] = minutes / 10;
+        display.digits[3] = minutes % 10;
+        display.digits[4] = seconds / 10;
+        display.digits[5] = seconds % 10;
+        display.refresh();
     }
 }
 
@@ -267,34 +263,27 @@ void displayDate(bool forceUpdate) {
     if (now != lastTimeUpdate || forceUpdate) {
         lastTimeUpdate = now;
 
-        CRGB color = testColors[currentColor];
-        color.nscale8(brightnessValues[brightnessMode]);
-
         uint32_t timestamp = timeClient.getEpochTime();
         int d = day(timestamp);
         int m = month(timestamp);
         int y = year(timestamp) % 100;
 
-        setAllDigits(
-            m / 10,
-            m % 10,
-            d / 10,
-            d % 10,
-            y / 10,
-            y % 10,
-            &color
-        );
+        display.digits[0] = m / 10;
+        display.digits[1] = m % 10;
+        display.digits[2] = d / 10;
+        display.digits[3] = d % 10;
+        display.digits[4] = y / 10;
+        display.digits[5] = y % 10;
+        display.refresh();
     }
 }
 
 void displayNumber(uint32_t value) {
-    CRGB color = testColors[currentColor];
-    color.nscale8(brightnessValues[brightnessMode]);
-
     for (int8_t i = 5; i >= 0; i--) {
-        setDigit(i, value % 10, &color);
+        display.digits[i] = value % 10;
         value /= 10;
     }
+    display.refresh();
 }
 
 
@@ -311,51 +300,4 @@ void loop() {
     }
 
     displayModeChanged = false;
-}
-
-void clearPixels(byte stripIndex, byte offset, byte count) {
-    for (byte i = 0; i < count; i++) {
-        ledStrips[stripIndex][i + offset] = CRGB::Black;
-    }
-}
-
-void setAllDigits(byte val0, byte val1, byte val2, byte val3, byte val4, byte val5, CRGB *color) {
-    setDigit(0, val0, color);
-    setDigit(1, val1, color);
-    setDigit(2, val2, color);
-    setDigit(3, val3, color);
-    setDigit(4, val4, color);
-    setDigit(5, val5, color);
-}
-
-void setDigit(byte index, byte value, CRGB *color) {
-    byte stripIndex = index / DIGITS_PER_STRIP;
-
-    // digit  offsets
-    // 0      5, 15
-    // 1      4, 14
-    // 2      6, 16
-    // 3      3, 13
-    // 4      7, 17
-    // 5      2, 12
-    // 6      8, 18
-    // 7      1, 11
-    // 8      9, 19
-    // 9      0, 10
-
-    byte pixelOffset = (index % DIGITS_PER_STRIP) * PIXELS_PER_DIGIT;
-    clearPixels(stripIndex, pixelOffset, PIXELS_PER_DIGIT);
-
-    if (value < 10) {
-        byte isOdd = value % 2;
-        byte halfValue = value / 2;
-        // even numbers count up from 5, odd numbers count down from 4
-        byte pixel0 = (isOdd * (4 - halfValue)) + ((1 - isOdd) * (5 + halfValue)) + pixelOffset;
-        byte pixel1 = pixel0 + 10;
-
-        ledStrips[stripIndex][pixel0] = *color;
-        ledStrips[stripIndex][pixel1] = *color;
-    }
-
-    FastLED.show();
 }
