@@ -7,7 +7,7 @@
 #include "WiFi.h"
 #include "ESPmDNS.h"
 #include "NTPClient.h"
-#include "Time.h"
+#include "TimeLib.h"
 #include "WiFiUdp.h"
 #include "ArduinoOTA.h"
 #include "TouchButtonManager.h"
@@ -41,10 +41,10 @@ WiFiServer server(80);
 CRGB ledStrips[STRIP_COUNT][PIXELS_PER_STRIP];
 
 CRGB testColors[] = {
-    CRGB::White,
-    CRGB::Red,
-    CRGB::Green,
-    CRGB::Blue,
+    0xffffff,   // white
+    0xff0000,   // red
+    0x10ff00,   // green
+    0x1010ff,   // blue
 };
 
 byte currentColor = 0;
@@ -59,6 +59,7 @@ uint32_t long lastTimeUpdate = 0;
 bool twelveHourTime = false;
 
 uint8_t displayMode = 0;
+bool displayModeChanged = true;
 
 TouchButtonManager buttonManager;
 
@@ -172,6 +173,7 @@ void onButtonPress(byte button, button_event_t event) {
     } else if (button == 1) {
         // switch to next mode
         displayMode = (displayMode + 1) % 2;
+        displayModeChanged = true;
     }
 }
 
@@ -261,9 +263,28 @@ void displayTime(bool forceUpdate) {
 }
 
 void displayDate(bool forceUpdate) {
-    CRGB color = testColors[currentColor];
-    color.nscale8(brightnessValues[brightnessMode]);
-    // date!
+    uint32_t now = millis() / 1000;
+    if (now != lastTimeUpdate || forceUpdate) {
+        lastTimeUpdate = now;
+
+        CRGB color = testColors[currentColor];
+        color.nscale8(brightnessValues[brightnessMode]);
+
+        uint32_t timestamp = timeClient.getEpochTime();
+        int d = day(timestamp);
+        int m = month(timestamp);
+        int y = year(timestamp) % 100;
+
+        setAllDigits(
+            m / 10,
+            m % 10,
+            d / 10,
+            d % 10,
+            y / 10,
+            y % 10,
+            &color
+        );
+    }
 }
 
 void displayNumber(uint32_t value) {
@@ -281,14 +302,15 @@ void loop() {
     ArduinoOTA.handle();
     handleWebRequets();
     buttonManager.poll();
+    timeClient.update();
 
     // SerialBT.printf("Touch Sensor: %d\r\n", touchRead(T5));
+    switch (displayMode) {
+        case 0: displayTime(displayModeChanged); break;
+        case 1: displayDate(displayModeChanged); break;
+    }
 
-    if (displayMode == 0)
-        displayTime(false);
-    else
-        displayNumber(timeClient.getEpochTime());
-        // displayDate(false);
+    displayModeChanged = false;
 }
 
 void clearPixels(byte stripIndex, byte offset, byte count) {

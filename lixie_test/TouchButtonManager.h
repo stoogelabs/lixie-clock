@@ -1,3 +1,6 @@
+#ifndef _TouchButtonManager_h
+#define _TouchButtonManager_h
+
 #include "Arduino.h"
 
 #define BUTTON_COUNT    2
@@ -85,3 +88,5 @@ class TouchButtonManager {
 
         void checkButton(byte index, uint32_t &now);
 };
+
+#endif
