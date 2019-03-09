@@ -7,11 +7,12 @@
 #include "WiFi.h"
 #include "ESPmDNS.h"
 #include "NTPClient.h"
-// #include "time.h"
+#include "TimeLib.h"
 #include "WiFiUdp.h"
 #include "ArduinoOTA.h"
+#include "TouchButtonManager.h"
+#include "LixieDisplay.h"
 // #include "BluetoothSerial.h"
-#include "driver/touch_pad.h"
 //#include <EEPROM.h>
 
 const char* ssid     = "4wire";
@@ -22,38 +23,19 @@ WiFiServer server(80);
 
 #define NTP_UPDATE_INTERVAL     86400
 
-
-#define BUTTON_PIN_1  T5    // Digital IO pin connected to the touchpad.
-#define BUTTON_PIN_2  T4    // This will be driven with a pull-up resistor so the switch should
-                            // pull the pin to ground momentarily.  On a high -> low
-                            // transition the button press logic will execute.
-
-#define PIXEL_PIN_1    15   // Digital IO pin connected to the NeoPixels.
-#define PIXEL_PIN_2    5
-#define PIXEL_PIN_3    14
-
 #define LLC   11
-
-#define PIXELS_PER_DIGIT 20
-#define DIGITS_PER_STRIP 2
-#define STRIP_COUNT 3
-#define DIGIT_COUNT STRIP_COUNT * DIGITS_PER_STRIP
-#define PIXELS_PER_STRIP PIXELS_PER_DIGIT * DIGITS_PER_STRIP
-
-#define BUTTON_COOLDOWN  100 // minimum time in miliseconds between button presses (to reduce noise)
-#define BUTTON_LONG_PRESS  600 // miliseconds between button down and up to count as a long press
 
 #define TWO_PI 6.28318530718
 
 #define DISPLAY_MODE_ADDR  0
 
-CRGB ledStrips[STRIP_COUNT][PIXELS_PER_STRIP];
+#define DISPLAY_MODE_COUNT  2
 
 CRGB testColors[] = {
-    CRGB::White,
-    CRGB::Red,
-    CRGB::Green,
-    CRGB::Blue,
+    0xffffff,   // white
+    0xff0000,   // red
+    0x10ff00,   // green
+    0x1010ff,   // blue
 };
 
 byte currentColor = 0;
@@ -68,19 +50,16 @@ uint32_t long lastTimeUpdate = 0;
 bool twelveHourTime = false;
 
 uint8_t displayMode = 0;
-bool buttonState[] = {HIGH, HIGH};   // LOW = pressed
-bool buttonHeld[] = {false, false};
-uint32_t lastButtonCheck[] = {0, 0};
-uint32_t buttonDownTime[] = {0, 0};
-byte brightnessMode = 0;
-const byte brightnessValues[] = {255, 80, 0};
+bool displayModeChanged = true;
 
+TouchButtonManager buttonManager;
+LixieDisplay display;
 
 void setupLEDs() {
-    Serial.println("Initializing FastLED neopixel strips...");
-    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_1>(ledStrips[0], PIXELS_PER_STRIP);
-    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_2>(ledStrips[1], PIXELS_PER_STRIP);
-    FastLED.addLeds<NEOPIXEL, PIXEL_PIN_3>(ledStrips[2], PIXELS_PER_STRIP);
+    Serial.println("Initializing Lixie display...");
+    display.setColor(&testColors[currentColor]);
+    display.setBrightnessMode(LIXIE_BRIGHT);
+    display.refresh();
 }
 
 void setupWifi() {
@@ -91,9 +70,7 @@ void setupWifi() {
         Serial.print(".");
     }
     Serial.println();
-    //Serial.printf("Connected! IP address: %s\r\n", WiFi.localIP());
-    Serial.println("Connected!");
-    Serial.print("IP address: ");
+    Serial.print("Connected! IP address: ");
     Serial.println(WiFi.localIP());
 }
 
@@ -153,6 +130,7 @@ void setup() {
 
     pinMode(LLC, OUTPUT);
     digitalWrite(LLC, LOW);
+    buttonManager.registerButtonHandler(onButtonPress);
 
     setupLEDs();
     setupWifi();
@@ -166,79 +144,32 @@ void setup() {
     // displayMode = EEPROM.read(DISPLAY_MODE_ADDR);
 }
 
-void handleButtons() {
-    uint32_t now = millis();
 
-    for (int i=0; i < 2; i++) {
-        // check if we've been holding the button for a while
-        if(!buttonHeld[i] && buttonState[i] == LOW && now > buttonDownTime[i] + BUTTON_LONG_PRESS) {
-            // pretend the button has actually been released
-            // buttonState = HIGH;
-            buttonHeld[i] = true;
-
-
-            buttonsFunctions(i, true);
-
-            return;
-        }
-
-        int touchVal[] = {100, 100};
-
-
-        touchVal[1] = touchRead(BUTTON_PIN_1);
-        delay(10);
-        touchVal[0] = touchRead(BUTTON_PIN_2);
-        delay(10);
-
-        // TODO: ignore 0 values (don't update measurement at all)
-
-        bool newState = touchVal[i] > 20;
-
-        if (!(newState == buttonState[i] || lastButtonCheck[i] > now - BUTTON_COOLDOWN)) {
-
-
-            //Serial.printf("Touch Sensor #1: %d\r\n", touchVal[1]);
-            //Serial.printf("Touch Sensor #2: %d\r\n", touchVal[0]);
-            // SerialBT.printf("Touch Sensor: %d\r\n", touchVal[i]);
-
-
-            lastButtonCheck[i] = now;
-            buttonState[i] = newState;
-
-            if (newState == LOW) {
-                buttonDownTime[i] = millis();
-                // SerialBT.println("Touch ME!");
-                // SerialBT.println(i);
-            } else {
-                if (buttonHeld[i]) {
-                    buttonHeld[i] = false;
-                } else if (now - buttonDownTime[i] < BUTTON_LONG_PRESS) {
-                    buttonsFunctions(i, false);
-
-
-                    // displayMode = (displayMode + 1) % 2;
-
-                    // Serial.printf("Current mode: %u\n", displayMode);
-
-                    //EEPROM.write(DISPLAY_MODE_ADDR, displayMode);
-                }
-            }
-        }
-    }
-}
 // what do the buttons actually do, bob???
-void buttonsFunctions(byte button, bool longPress) {
-    if (button == 0){
-        if (longPress == true){
-            brightnessMode = (brightnessMode + 1) % 3;
-        } else if (brightnessMode <= 2) {
-            brightnessMode = 0;
-        } else {
+void onButtonPress(byte button, button_event_t event) {
+    if (event == BUTTON_PRESS_RESET) {
+
+    } else if (button == 0) {
+        if (event == BUTTON_PRESS_LONG) {
+            display.nextBrightnessMode();
+            Serial.printf("Changed brightness mode: %d\r\n", display.getBrightnessMode());
+        } else { // event == BUTTON_PRESS_SHORT
+            if (display.getBrightnessMode() == LIXIE_OFF)
+                display.nextBrightnessMode();
+
             currentColor = (currentColor + 1) % 4;
-            displayTime(true);
+            display.setColor(&testColors[currentColor]);
+            Serial.printf("Changed color mode: %d\r\n", currentColor);
         }
+
+        display.refresh();
+
+    } else if (button == 1) {
+        // switch to next mode
+        displayMode = (displayMode + 1) % 2;
+        displayModeChanged = true;
+        Serial.printf("Changed display mode: %d\r\n", displayMode);
     }
-    if (button == 1){} //date stuff
 }
 
 // check for new client connections
@@ -284,10 +215,10 @@ void handleWebRequets() {
 
             // Check to see if the client request was "GET /H" or "GET /L":
             if (currentLine.endsWith("GET /H")) {
-                displayMode++;               // GET /H turns the LED on
+                displayMode = (displayMode + 1) % DISPLAY_MODE_COUNT;   // GET /H turns the LED on
             }
             if (currentLine.endsWith("GET /L")) {
-                displayMode--;                // GET /L turns the LED off
+                displayMode = (displayMode - 1) % DISPLAY_MODE_COUNT;   // GET /L turns the LED off
             }
         }
     }
@@ -311,92 +242,56 @@ void displayTime(bool forceUpdate) {
         } else {
             hour0 = hours / 10;
         }
-
-        CRGB color = testColors[currentColor];
-        color.nscale8(brightnessValues[brightnessMode]);
-        setAllDigits(
-            hour0,
-            hours % 10,
-            minutes / 10,
-            minutes % 10,
-            seconds / 10,
-            seconds % 10,
-            &color
-        );
+        display.digits[0] = hour0;
+        display.digits[1] = hours % 10;
+        display.digits[2] = minutes / 10;
+        display.digits[3] = minutes % 10;
+        display.digits[4] = seconds / 10;
+        display.digits[5] = seconds % 10;
+        display.refresh();
     }
 }
 
 void displayDate(bool forceUpdate) {
-    CRGB color = testColors[currentColor];
-    color.nscale8(brightnessValues[brightnessMode]);
-    // date!
+    uint32_t now = millis() / 1000;
+    if (now != lastTimeUpdate || forceUpdate) {
+        lastTimeUpdate = now;
+
+        uint32_t timestamp = timeClient.getEpochTime();
+        int d = day(timestamp);
+        int m = month(timestamp);
+        int y = year(timestamp) % 100;
+
+        display.digits[0] = m / 10;
+        display.digits[1] = m % 10;
+        display.digits[2] = d / 10;
+        display.digits[3] = d % 10;
+        display.digits[4] = y / 10;
+        display.digits[5] = y % 10;
+        display.refresh();
+    }
 }
 
 void displayNumber(uint32_t value) {
-    CRGB color = testColors[currentColor];
-    color.nscale8(brightnessValues[brightnessMode]);
-
     for (int8_t i = 5; i >= 0; i--) {
-        setDigit(i, value % 10, &color);
+        display.digits[i] = value % 10;
         value /= 10;
     }
+    display.refresh();
 }
+
 
 void loop() {
     ArduinoOTA.handle();
     handleWebRequets();
-    handleButtons();
+    buttonManager.poll();
+    timeClient.update();
+
     // SerialBT.printf("Touch Sensor: %d\r\n", touchRead(T5));
-
-    if (displayMode == 0)
-        displayTime(false);
-    else
-        displayDate(false);
-}
-
-void clearPixels(byte stripIndex, byte offset, byte count) {
-    for (byte i = 0; i < count; i++) {
-        ledStrips[stripIndex][i + offset] = CRGB::Black;
-    }
-}
-
-void setAllDigits(byte val0, byte val1, byte val2, byte val3, byte val4, byte val5, CRGB *color) {
-    setDigit(0, val0, color);
-    setDigit(1, val1, color);
-    setDigit(2, val2, color);
-    setDigit(3, val3, color);
-    setDigit(4, val4, color);
-    setDigit(5, val5, color);
-}
-
-void setDigit(byte index, byte value, CRGB *color) {
-    byte stripIndex = index / DIGITS_PER_STRIP;
-
-    // digit  offsets
-    // 0      5, 15
-    // 1      4, 14
-    // 2      6, 16
-    // 3      3, 13
-    // 4      7, 17
-    // 5      2, 12
-    // 6      8, 18
-    // 7      1, 11
-    // 8      9, 19
-    // 9      0, 10
-
-    byte pixelOffset = (index % DIGITS_PER_STRIP) * PIXELS_PER_DIGIT;
-    clearPixels(stripIndex, pixelOffset, PIXELS_PER_DIGIT);
-
-    if (value < 10) {
-        byte isOdd = value % 2;
-        byte halfValue = value / 2;
-        // even numbers count up from 5, odd numbers count down from 4
-        byte pixel0 = (isOdd * (4 - halfValue)) + ((1 - isOdd) * (5 + halfValue)) + pixelOffset;
-        byte pixel1 = pixel0 + 10;
-
-        ledStrips[stripIndex][pixel0] = *color;
-        ledStrips[stripIndex][pixel1] = *color;
+    switch (displayMode) {
+        case 0: displayTime(displayModeChanged); break;
+        case 1: displayDate(displayModeChanged); break;
     }
 
-    FastLED.show();
+    displayModeChanged = false;
 }
