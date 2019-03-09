@@ -23,23 +23,13 @@ WiFiServer server(80);
 
 #define NTP_UPDATE_INTERVAL     86400
 
-#define PIXEL_PIN_1    15   // Digital IO pin connected to the NeoPixels.
-#define PIXEL_PIN_2    5
-#define PIXEL_PIN_3    14
-
 #define LLC   11
-
-#define PIXELS_PER_DIGIT 20
-#define DIGITS_PER_STRIP 2
-#define STRIP_COUNT 3
-#define DIGIT_COUNT STRIP_COUNT * DIGITS_PER_STRIP
-#define PIXELS_PER_STRIP PIXELS_PER_DIGIT * DIGITS_PER_STRIP
 
 #define TWO_PI 6.28318530718
 
 #define DISPLAY_MODE_ADDR  0
 
-CRGB ledStrips[STRIP_COUNT][PIXELS_PER_STRIP];
+#define DISPLAY_MODE_COUNT  2
 
 CRGB testColors[] = {
     0xffffff,   // white
@@ -65,12 +55,10 @@ bool displayModeChanged = true;
 TouchButtonManager buttonManager;
 LixieDisplay display;
 
-byte brightnessMode = 0;
-const byte brightnessValues[] = {255, 80, 0};
-
 void setupLEDs() {
     Serial.println("Initializing Lixie display...");
     display.setColor(&testColors[currentColor]);
+    display.setBrightnessMode(LIXIE_BRIGHT);
     display.refresh();
 }
 
@@ -162,19 +150,25 @@ void onButtonPress(byte button, button_event_t event) {
     if (event == BUTTON_PRESS_RESET) {
 
     } else if (button == 0) {
-        if (event == BUTTON_PRESS_LONG){
-            brightnessMode = (brightnessMode + 1) % 3;
-        } else if (brightnessMode <= 2) {
-            brightnessMode = 0;
-        } else {
+        if (event == BUTTON_PRESS_LONG) {
+            display.nextBrightnessMode();
+            Serial.printf("Changed brightness mode: %d\r\n", display.getBrightnessMode());
+        } else { // event == BUTTON_PRESS_SHORT
+            if (display.getBrightnessMode() == LIXIE_OFF)
+                display.nextBrightnessMode();
+
             currentColor = (currentColor + 1) % 4;
             display.setColor(&testColors[currentColor]);
-            display.refresh();
+            Serial.printf("Changed color mode: %d\r\n", currentColor);
         }
+
+        display.refresh();
+
     } else if (button == 1) {
         // switch to next mode
         displayMode = (displayMode + 1) % 2;
         displayModeChanged = true;
+        Serial.printf("Changed display mode: %d\r\n", displayMode);
     }
 }
 
@@ -221,10 +215,10 @@ void handleWebRequets() {
 
             // Check to see if the client request was "GET /H" or "GET /L":
             if (currentLine.endsWith("GET /H")) {
-                displayMode++;               // GET /H turns the LED on
+                displayMode = (displayMode + 1) % DISPLAY_MODE_COUNT;   // GET /H turns the LED on
             }
             if (currentLine.endsWith("GET /L")) {
-                displayMode--;                // GET /L turns the LED off
+                displayMode = (displayMode - 1) % DISPLAY_MODE_COUNT;   // GET /L turns the LED off
             }
         }
     }

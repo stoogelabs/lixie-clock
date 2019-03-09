@@ -12,11 +12,27 @@
 #define LIXIE_LEDS_PER_STRIP LIXIE_LEDS_PER_DIGIT * LIXIE_DIGITS_PER_STRIP
 #define LIXIE_LED_COUNT LIXIE_LEDS_PER_STRIP * LIXIE_STRIP_COUNT
 
+#define LIXIE_BRIGHTNESS_MODE_COUNT 3
+
+enum brightness_mode_t {
+    LIXIE_BRIGHT = 0,
+    LIXIE_DIM = 1,
+    LIXIE_OFF = 2,
+};
+
+static const byte brightnessValues[] = {
+    255,
+    80,
+    0,
+};
+
 class LixieDisplay {
     private:
         CRGB pixels[LIXIE_LED_COUNT] = {};
 
         byte currentDigits[LIXIE_DIGIT_COUNT] = {};
+
+        brightness_mode_t brightnessMode = LIXIE_BRIGHT;
 
         // updates the specified digit with the correct value and color
         void refreshDigit(byte index);
@@ -38,4 +54,10 @@ class LixieDisplay {
         void refresh();
 
         void setColor(CRGB *color);
+
+        brightness_mode_t getBrightnessMode();
+
+        void setBrightnessMode(brightness_mode_t mode);
+
+        void nextBrightnessMode();
 };

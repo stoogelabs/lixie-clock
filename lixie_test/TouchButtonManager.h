@@ -6,32 +6,24 @@
 #define BUTTON_COUNT    2
 #define BUTTON_PINS     T5, T4
 
-#define BUTTON_SMOOTHING_FAST       0.05     // weighting for new values when calculating an expoential moving average
+#define BUTTON_SMOOTHING_FAST       0.75    // weighting for new values when calculating an expoential moving average
 #define BUTTON_SMOOTHING_FAST_INV   1 - BUTTON_SMOOTHING_FAST
 
-#define BUTTON_SMOOTHING_SLOW       0.005    // weighting for new values when calculating an expoential moving average
+#define BUTTON_SMOOTHING_SLOW       0.01    // weighting for new values when calculating an expoential moving average
 #define BUTTON_SMOOTHING_SLOW_INV   1 - BUTTON_SMOOTHING_SLOW
 
-#define BUTTON_THRESHHOLD       0.3   // fraction of the base value to be considered a button press
+#define BUTTON_THRESHHOLD       0.4     // fraction of the base value to be considered a button press
 
-#define BUTTON_SHORT_HOLD_TIME  100 // regular press length in ms (non-zero to prevent transients from triggering button)
-#define BUTTON_LONG_HOLD_TIME   600 // long press length in ms
-#define BUTTON_RESET_HOLD_TIME  5000 // hard reset press length in ms
+#define BUTTON_SHORT_HOLD_TIME  100     // regular press length in ms (non-zero to prevent transients from triggering button)
+#define BUTTON_LONG_HOLD_TIME   600     // long press length in ms
+#define BUTTON_RESET_HOLD_TIME  5000    // hard reset press length in ms
 
-#define BUTTON_READ_DELAY       20 // wait20ms between readings to reduce chance of measurement errors
+#define BUTTON_READ_DELAY       10      // wait20ms between readings to reduce chance of measurement errors
 
 enum button_event_t {
     BUTTON_PRESS_SHORT = 0,
-    BUTTON_PRESS_LONG,
-    BUTTON_PRESS_RESET,
-};
-
-enum button_state_t {
-    BUTTON_STATE_IDLE = 0,
-    BUTTON_STATE_ACTIVE = 1,
-    BUTTON_STATE_SHORT_HOLD = 2,
-    BUTTON_STATE_LONG_HOLD = 3,
-    BUTTON_STATE_RESET = 4,
+    BUTTON_PRESS_LONG = 1,
+    BUTTON_PRESS_RESET = 2,
 };
 
 struct TouchButton {
@@ -51,6 +43,10 @@ struct TouchButton {
 
     // timestamp when the button press started (0 means button is inactive)
     uint32_t downTime = 0;
+
+    // flag indicating the button is still being held down, but an event has already been fired,
+    // so we shouldn't fire any more events until it's released
+    bool cooldown = false;
 
     // update moving average with a new data point
     void updateFiltered(float newVal);

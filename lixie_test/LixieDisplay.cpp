@@ -69,3 +69,16 @@ void LixieDisplay::setColor(CRGB *color) {
         this->colors[i] = *color;
     }
 }
+
+
+brightness_mode_t LixieDisplay::getBrightnessMode() { return this->brightnessMode; }
+
+void LixieDisplay::setBrightnessMode(brightness_mode_t mode) {
+    this->brightnessMode = mode;
+    this->brightness = brightnessValues[mode];
+}
+
+void LixieDisplay::nextBrightnessMode() {
+    this->setBrightnessMode((brightness_mode_t)((this->brightnessMode + 1) % LIXIE_BRIGHTNESS_MODE_COUNT));
+
+}
