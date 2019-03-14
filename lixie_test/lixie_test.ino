@@ -7,6 +7,7 @@
 #include "WiFi.h"
 #include "ESPmDNS.h"
 #include "NTPClient.h"
+// libary is called "Time" by Michael Margolls
 #include "TimeLib.h"
 #include "WiFiUdp.h"
 #include "ArduinoOTA.h"
@@ -43,11 +44,11 @@ byte currentColor = 0;
 // BluetoothSerial SerialBT;
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP);
+NTPClient timeClient(ntpUDP, "us.pool.ntp.org");
 
 uint32_t long lastTimeUpdate = 0;
 
-bool twelveHourTime = false;
+bool twelveHourTime = true;
 
 uint8_t displayMode = 0;
 bool displayModeChanged = true;
@@ -65,9 +66,12 @@ void setupLEDs() {
 void setupWifi() {
     Serial.printf("Connecting to %s...", ssid);
     WiFi.begin(ssid, password);
+    int count = 0;
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
+        if(count > 25)ESP.restart();
+        count++;
     }
     Serial.println();
     Serial.print("Connected! IP address: ");
@@ -278,6 +282,21 @@ void displayNumber(uint32_t value) {
         value /= 10;
     }
     display.refresh();
+}
+
+void displayTest(bool forceUpdate) {
+  uint32_t now = millis() / 1000;
+    if (now != lastTimeUpdate || forceUpdate) {
+        lastTimeUpdate = now;
+    }
+  
+//        display.digits[0] = m / 10;
+//        display.digits[1] = m % 10;
+//        display.digits[2] = d / 10;
+//        display.digits[3] = d % 10;
+//        display.digits[4] = y / 10;
+//        display.digits[5] = y % 10;
+//        display.refresh();
 }
 
 
