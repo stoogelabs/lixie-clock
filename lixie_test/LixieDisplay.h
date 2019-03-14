@@ -14,6 +14,8 @@
 
 #define LIXIE_BRIGHTNESS_MODE_COUNT 3
 
+#define LIXIE_BLANK_DIGIT       255
+
 enum brightness_mode_t {
     LIXIE_BRIGHT = 0,
     LIXIE_DIM = 1,
@@ -33,6 +35,8 @@ class LixieDisplay {
         byte currentDigits[LIXIE_DIGIT_COUNT] = {};
 
         brightness_mode_t brightnessMode = LIXIE_BRIGHT;
+
+        void clearDigit(byte index);
 
         // updates the specified digit with the correct value and color
         void refreshDigit(byte index);

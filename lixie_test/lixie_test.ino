@@ -242,7 +242,7 @@ void displayTime(bool forceUpdate) {
         byte hour0;
         if (twelveHourTime) {
             hours %= 12;
-            hour0 = hours < 10 ? 255 : 1;   // don't display leading 0
+            hour0 = hours < 10 ? LIXIE_BLANK_DIGIT : 1;   // don't display leading 0
         } else {
             hour0 = hours / 10;
         }

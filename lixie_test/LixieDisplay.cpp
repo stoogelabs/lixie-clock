@@ -33,27 +33,36 @@ byte LixieDisplay::getLedOffset(byte index, byte value) {
     return (isOdd * (4 - halfValue)) + ((1 - isOdd) * (5 + halfValue)) + digitOffset;
 }
 
+void LixieDisplay::clearDigit(byte index) {
+    byte digitOffset = index * LIXIE_LEDS_PER_DIGIT;
+    for (byte i = 0; i < LIXIE_LEDS_PER_DIGIT; i++) {
+        this->pixels[i + digitOffset] = 0;
+    }
+}
+
 void LixieDisplay::refreshDigit(byte index) {
     byte &currentValue = this->currentDigits[index];
     byte &newValue = this->digits[index];
 
     // clear the previous digit if necessary
-    if (currentValue != newValue) {
+    if (currentValue != newValue && currentValue != LIXIE_BLANK_DIGIT) {
         byte oldOffset0 = LixieDisplay::getLedOffset(index, currentValue);
         byte oldOffset1 = oldOffset0 + LIXIE_PANEL_COUNT;
         this->pixels[oldOffset0] = 0;
         this->pixels[oldOffset1] = 0;
-        currentValue = newValue;
     }
+    currentValue = newValue;
 
-    byte offset0 = LixieDisplay::getLedOffset(index, newValue);
-    byte offset1 = offset0 + LIXIE_PANEL_COUNT;
+    if (newValue != LIXIE_BLANK_DIGIT) {
+        byte offset0 = LixieDisplay::getLedOffset(index, newValue);
+        byte offset1 = offset0 + LIXIE_PANEL_COUNT;
 
-    CRGB color = this->colors[index];
-    color.nscale8(this->brightness);
+        CRGB color = this->colors[index];
+        color.nscale8(this->brightness);
 
-    this->pixels[offset0] = color;
-    this->pixels[offset1] = color;
+        this->pixels[offset0] = color;
+        this->pixels[offset1] = color;
+    }
 }
 
 
