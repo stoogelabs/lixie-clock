@@ -21,6 +21,8 @@ WiFiServer server(80);
 
 //EEPROMClass  MODE("eeprom0", 0x1000);
 
+#define TIMEZONE_OFFSET_HOURS   -8
+
 #define NTP_UPDATE_INTERVAL     86400
 
 #define LLC   11
@@ -47,7 +49,7 @@ NTPClient timeClient(ntpUDP);
 
 uint32_t long lastTimeUpdate = 0;
 
-bool twelveHourTime = false;
+bool twelveHourTime = true;
 
 uint8_t displayMode = 0;
 bool displayModeChanged = true;
@@ -106,7 +108,7 @@ void setupArduinoOTA() {
 void setupNtpClient() {
     Serial.println("Initializing NTP client...");
     timeClient.begin();
-    timeClient.setTimeOffset(-8 * 3600);
+    timeClient.setTimeOffset(TIMEZONE_OFFSET_HOURS * 3600);
     timeClient.setUpdateInterval(NTP_UPDATE_INTERVAL);
 }
 
@@ -238,6 +240,7 @@ void displayTime(bool forceUpdate) {
         byte hour0;
         if (twelveHourTime) {
             hours %= 12;
+            hours = hours == 0 ? 12 : hours;
             hour0 = hours < 10 ? LIXIE_BLANK_DIGIT : 1;   // don't display leading 0
         } else {
             hour0 = hours / 10;
