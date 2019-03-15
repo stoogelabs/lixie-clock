@@ -6,19 +6,19 @@
 #define BUTTON_COUNT    2
 #define BUTTON_PINS     T5, T4
 
-#define BUTTON_SMOOTHING_FAST       0.75    // weighting for new values when calculating an expoential moving average
+#define BUTTON_SMOOTHING_FAST       0.4     // weighting for new values when calculating an expoential moving average
 #define BUTTON_SMOOTHING_FAST_INV   1 - BUTTON_SMOOTHING_FAST
 
-#define BUTTON_SMOOTHING_SLOW       0.01    // weighting for new values when calculating an expoential moving average
+#define BUTTON_SMOOTHING_SLOW       0.0001  // weighting for new values when calculating an expoential moving average
 #define BUTTON_SMOOTHING_SLOW_INV   1 - BUTTON_SMOOTHING_SLOW
 
 #define BUTTON_THRESHHOLD       0.4     // fraction of the base value to be considered a button press
 
-#define BUTTON_SHORT_HOLD_TIME  100     // regular press length in ms (non-zero to prevent transients from triggering button)
-#define BUTTON_LONG_HOLD_TIME   600     // long press length in ms
+#define BUTTON_SHORT_HOLD_TIME  50      // regular press length in ms (non-zero to prevent transients from triggering button)
+#define BUTTON_LONG_HOLD_TIME   800     // long press length in ms
 #define BUTTON_RESET_HOLD_TIME  5000    // hard reset press length in ms
 
-#define BUTTON_READ_DELAY       10      // wait20ms between readings to reduce chance of measurement errors
+#define BUTTON_READ_DELAY       3       // wait20ms between readings to reduce chance of measurement errors
 
 enum button_event_t {
     BUTTON_PRESS_SHORT = 0,

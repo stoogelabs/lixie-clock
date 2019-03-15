@@ -22,7 +22,7 @@ WiFiServer server(80);
 
 //EEPROMClass  MODE("eeprom0", 0x1000);
 
-#define TIMEZONE_OFFSET_HOURS   -8
+#define TIMEZONE_OFFSET_HOURS   -7
 
 #define NTP_UPDATE_INTERVAL     86400
 
@@ -292,7 +292,7 @@ void displayTest(bool forceUpdate) {
     if (now != lastTimeUpdate || forceUpdate) {
         lastTimeUpdate = now;
     }
-  
+
 //        display.digits[0] = m / 10;
 //        display.digits[1] = m % 10;
 //        display.digits[2] = d / 10;
