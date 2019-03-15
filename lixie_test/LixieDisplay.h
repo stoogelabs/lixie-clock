@@ -28,6 +28,19 @@ static const byte brightnessValues[] = {
     0,
 };
 
+static const byte panelBrightnessFactor[] = {
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    200,
+    255,
+    255,
+};
+
 class LixieDisplay {
     private:
         CRGB pixels[LIXIE_LED_COUNT] = {};
@@ -45,6 +58,9 @@ class LixieDisplay {
         // calculates the pixel offset of the first pixel for the specified value
         // and digit index (assumes the strip starts at 0)
         static byte getLedOffset(byte index, byte value);
+
+        // compensates for panels in the back appearing dimmer
+        static byte getPanelBrightness(byte value);
 
     public:
         LixieDisplay();

@@ -33,6 +33,15 @@ byte LixieDisplay::getLedOffset(byte index, byte value) {
     return (isOdd * (4 - halfValue)) + ((1 - isOdd) * (5 + halfValue)) + digitOffset;
 }
 
+byte LixieDisplay::getPanelBrightness(byte value) {
+    if (value > 9) {
+        Serial.printf("Panel value out of bounds: %d\r\n", value);
+        value = 9;
+    }
+
+    return panelBrightnessFactor[value];
+}
+
 void LixieDisplay::clearDigit(byte index) {
     byte digitOffset = index * LIXIE_LEDS_PER_DIGIT;
     for (byte i = 0; i < LIXIE_LEDS_PER_DIGIT; i++) {
@@ -59,6 +68,7 @@ void LixieDisplay::refreshDigit(byte index) {
 
         CRGB color = this->colors[index];
         color.nscale8(this->brightness);
+        color.nscale8(LixieDisplay::getPanelBrightness(newValue));
 
         this->pixels[offset0] = color;
         this->pixels[offset1] = color;

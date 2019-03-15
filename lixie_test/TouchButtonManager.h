@@ -1,7 +1,7 @@
+#include "Arduino.h"
+
 #ifndef _TouchButtonManager_h
 #define _TouchButtonManager_h
-
-#include "Arduino.h"
 
 #define BUTTON_COUNT    2
 #define BUTTON_PINS     T5, T4
