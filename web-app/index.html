@@ -1,0 +1,175 @@
+<html>
+<head>
+<title>Lixie Clock - Stooge Labs</title>
+<style>
+body {
+  background: #353030;
+  color: #333;
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+a:link, a:visited, a:active, a:hover { color: #fff4bd; text-decoration: none; }
+
+#main-layout {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  width: 100vw;
+}
+
+nav {
+  flex: 0 0 200px;
+  padding: 10px 0;
+}
+nav a {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 20px;
+  height: 60px;
+  margin: 0 0 4px 20px;
+  background: rgba(255, 103, 30, 0.15);
+  border: 1px solid rgba(255, 190, 74, 0.5);
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  color: #fff4bd;
+  text-shadow: 0 0 10px #ffa013;
+  font-weight: bold;
+  text-transform: uppercase;
+  text-decoration: none;
+  /* box-shadow: inset -16px 0 0 rgba(0,0,0,0.1), inset -5px 0 0 rgba(0,0,0,0.2); */
+
+  box-shadow: inset 0 0 0 rgba(255, 103, 30, 0), inset -5px 0 0 rgba(255, 103, 30, 0.25);
+
+  transition: all 200ms ease-out;
+}
+nav a:hover, nav a:focus {
+  outline: none;
+  /* background: #bbb; */
+  /* box-shadow: inset 0 0 0 rgba(0,0,0,0.1), inset 0 0 0 rgba(0,0,0,0.2); */
+  border-color: rgba(255, 190, 74, 1);
+
+  box-shadow: inset -200px 0 50px rgba(255, 103, 30, 0.2), inset -5px 0 0 rgba(255, 103, 30, 0.5);
+}
+
+article {
+  flex: 1 1 auto;
+  background: #bbb;
+}
+article section {
+  display: none;
+  padding: 20px;
+}
+article section label {
+  width: 180px;
+  float: left;
+  clear:left;
+  margin-bottom: 10px;
+  font-weight: bold;
+  font-size: 14px;
+}
+article section input, article section select { float: left; }
+
+
+</style>
+</head>
+<body>
+<div id="main-layout">
+  <nav>
+    <a href="connection">Connection</a>
+    <a href="datetime">Date/Time</a>
+    <a href="countdown">Countdown</a>
+    <a href="stopwatch">Stopwatch</a>
+  </nav>
+  <article>
+    <section id="connection-tab">
+      <label for="wifi-ssid">WiFi SSID</label>
+      <input name="wifi-ssid" id="wifi-ssid" type="text" minlength="1" maxlength="32" />
+      <label for="wifi-pw">WiFi Password</label>
+      <input name="wifi-pw" id="wifi-pw" type="password" maxlength="64" />
+    </section>
+    <section id="datetime-tab" style="display: block">
+      <label for="tz-offset">Timezone Offset</label>
+      <select name="tz-offset" id="tz-offset">
+        <option value="-12">(-12:00) International Date Line West</option>
+        <option value="-11">(-11:00) Midway Island, Samoa</option>
+        <option value="-10">(-10:00) Hawaii</option>
+        <option value="-9">(-09:00) Alaska</option>
+        <option value="-8">(-08:00) Pacific Time (US & Canada)</option>
+        <option value="-7">(-07:00) Mountain Time (US & Canada)</option>
+        <option value="-6">(-06:00) Central Time (US & Canada)</option>
+        <option value="-5">(-05:00) Eastern Time (US & Canada)</option>
+        <option value="-4">(-04:00) Atlantic Time (Canada)</option>
+        <option value="-3.5">(-03:30) Newfoundland</option>
+        <option value="-3">(-03:00) Buenos Aires</option>
+        <option value="-2">(-02:00) Mid-Atlantic</option>
+        <option value="-1">(-01:00) Azores</option>
+        <option value="0">(+00:00) London</option>
+        <option value="1">(+01:00) Paris</option>
+        <option value="2">(+02:00) Helsinki</option>
+        <option value="3">(+03:00) Moscow</option>
+        <option value="3.5">(+03:30) Tehran</option>
+        <option value="4">(+04:00) Abu Dhabi</option>
+        <option value="4.5">(+04:30) Kabul</option>
+        <option value="5">(+05:00) Islamabad</option>
+        <option value="5.5">(+05:30) Mumbai</option>
+        <option value="5.75">(+05:45) Kathmandu</option>
+        <option value="6">(+06:00) Dhaka</option>
+        <option value="6.5">(+06:30) Yangon</option>
+        <option value="7">(+07:00) Bangkok</option>
+        <option value="8">(+08:00) Hong Kong</option>
+        <option value="9">(+09:00) Tokyo</option>
+        <option value="9.5">(+09:30) Darwin</option>
+        <option value="10">(+10:00) Sydney</option>
+        <option value="11">(+11:00) Solomon Islands</option>
+        <option value="12">(+12:00) Auckland</option>
+        <option value="13">(+13:00) Nuku'alofa</option>
+      </select>
+      <label for="tz-dst">Daylight Saving Time</label>
+      <input name="tz-dst" id="tz-dst" type="checkbox" />
+      <label for="ntp-server">NTP Server</label>
+      <input name="ntp-server" id="ntp-server" type="text" minlength="0" maxlength="32" />
+    </section>
+    <section id="countdown-tab">
+      Wow such countdown. very tick. much tock
+    </section>
+    <section id="stopwatch-tab">
+      Ye Olde Stop-watch Tabbe
+    </section>
+  </article>
+</div>
+<script>
+(function() {
+  // const q = document.querySelectorAll;
+  const navLinks = document.querySelectorAll("nav a");
+  const tabs = document.querySelectorAll("article section");
+
+  function clearTabs() {
+    for (const link of navLinks) {
+      link.classList.remove("selected");
+    }
+    for (const tab of tabs) {
+      tab.style.display = "none";
+    }
+  }
+
+  function setTab(e) {
+    e.preventDefault();
+    clearTabs();
+    const link = e.currentTarget;
+    link.blur();
+    link.classList.add("selected");
+    document.querySelector(`#${link.getAttribute("href")}-tab`).style.display = "block";
+  }
+
+  for (const link of navLinks) {
+    link.addEventListener("click", setTab);
+  }
+
+
+
+})();
+</script>
+</body>
+</html>
