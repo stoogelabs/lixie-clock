@@ -3,13 +3,13 @@
 <title>Lixie Clock - Stooge Labs</title>
 <style>
 body {
-  background: #353030;
+  background: #222;
   color: #333;
   font-family: Arial, Helvetica, sans-serif;
   margin: 0;
   padding: 0;
 }
-a:link, a:visited, a:active, a:hover { color: #fff4bd; text-decoration: none; }
+a:link, a:visited, a:active, a:hover { color: #fff; text-decoration: none; }
 
 #main-layout {
   display: flex;
@@ -22,6 +22,33 @@ nav {
   flex: 0 0 200px;
   padding: 10px 0;
 }
+
+nav a:nth-child(1) {
+  border-color: hsla(22, 100%, 65%, 0.5);
+  text-shadow: 0 0 10px hsla(22, 100%, 54%, 0.75);
+  background: hsla(10, 100%, 56%, 0.15);
+}
+nav a:nth-child(2) {
+  border-color: hsla(41, 100%, 55%, 0.5);
+  text-shadow: 0 0 10px hsla(30, 100%, 54%, 0.75);
+  background: hsla(30, 100%, 56%, 0.15);
+}
+nav a:nth-child(3) {
+  border-color: hsla(100, 100%, 65%, 0.5);
+  text-shadow: 0 0 10px hsla(100, 100%, 54%, 0.75);
+  background: hsla(140, 100%, 56%, 0.15);
+}
+nav a:nth-child(4) {
+  border-color: hsla(160, 100%, 65%, 0.5);
+  text-shadow: 0 0 10px hsla(160, 100%, 54%, 0.75);
+  background: hsla(180, 100%, 56%, 0.15);
+}
+nav a:nth-child(5) {
+  border-color: hsla(220, 100%, 65%, 0.5);
+  text-shadow: 0 0 10px hsla(220, 100%, 54%, 0.75);
+  background: hsla(240, 100%, 56%, 0.15);
+}
+
 nav a {
   display: flex;
   flex-direction: row;
@@ -29,12 +56,16 @@ nav a {
   padding: 0 20px;
   height: 60px;
   margin: 0 0 4px 20px;
-  background: rgba(255, 103, 30, 0.15);
-  border: 1px solid rgba(255, 190, 74, 0.5);
+  /* background: rgba(255, 103, 30, 0.15); */
+  /* border: 1px solid rgba(255, 190, 74, 0.5); */
+  border: 1px solid;
   border-right: none;
   border-radius: 4px 0 0 4px;
-  color: #fff4bd;
-  text-shadow: 0 0 10px #ffa013;
+  /* color: #fff4bd; */
+  /* color: hsl(50, 100%, 87%); */
+  color: #fff;
+  /* text-shadow: 0 0 10px #ffa013; */
+  text-shadow: 0 0 10px hsl(22, 100%, 54%);
   font-weight: bold;
   text-transform: uppercase;
   text-decoration: none;
@@ -42,13 +73,14 @@ nav a {
 
   box-shadow: inset 0 0 0 rgba(255, 103, 30, 0), inset -5px 0 0 rgba(255, 103, 30, 0.25);
 
-  transition: all 200ms ease-out;
+  transition: all 250ms ease-out;
 }
-nav a:hover, nav a:focus {
+nav a:hover, nav a:focus, nav a.selected {
   outline: none;
   /* background: #bbb; */
   /* box-shadow: inset 0 0 0 rgba(0,0,0,0.1), inset 0 0 0 rgba(0,0,0,0.2); */
   border-color: rgba(255, 190, 74, 1);
+  text-shadow: 0 0 10px hsla(30, 100%, 54%, 0.75);
 
   box-shadow: inset -200px 0 50px rgba(255, 103, 30, 0.2), inset -5px 0 0 rgba(255, 103, 30, 0.5);
 }
@@ -81,6 +113,7 @@ article section input, article section select { float: left; }
     <a href="datetime">Date/Time</a>
     <a href="countdown">Countdown</a>
     <a href="stopwatch">Stopwatch</a>
+    <a href="durrr">Another Tab</a>
   </nav>
   <article>
     <section id="connection-tab">
