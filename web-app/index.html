@@ -9,80 +9,91 @@ body {
   margin: 0;
   padding: 0;
 }
-a:link, a:visited, a:active, a:hover { color: #fff; text-decoration: none; }
+a:link, a:visited, a:active, a:hover { color: inherit; text-decoration: none; }
+
+
 
 #main-layout {
   display: flex;
   flex-direction: row;
   height: 100vh;
-  width: 100vw;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-right: 200px;
 }
 
 nav {
   flex: 0 0 200px;
   padding: 10px 0;
+  margin-top: 80px;
 }
 
-nav a:nth-child(1) {
-  border-color: hsla(22, 100%, 65%, 0.5);
-  text-shadow: 0 0 10px hsla(22, 100%, 54%, 0.75);
-  background: hsla(10, 100%, 56%, 0.15);
+/* nav a:nth-child(1) {
+  border-color: hsla(30, 50%, 65%, 0.5);
+  text-shadow: 0 0 10px hsla(30, 100%, 54%, 0.75);
+  background: hsla(20, 50%, 50%, 0.25);
 }
 nav a:nth-child(2) {
-  border-color: hsla(41, 100%, 55%, 0.5);
-  text-shadow: 0 0 10px hsla(30, 100%, 54%, 0.75);
-  background: hsla(30, 100%, 56%, 0.15);
+  border-color: hsla(50, 50%, 55%, 0.5);
+  text-shadow: 0 0 10px hsla(50, 100%, 54%, 0.75);
+  background: hsla(40, 80%, 50%, 0.25);
 }
 nav a:nth-child(3) {
-  border-color: hsla(100, 100%, 65%, 0.5);
-  text-shadow: 0 0 10px hsla(100, 100%, 54%, 0.75);
-  background: hsla(140, 100%, 56%, 0.15);
+  border-color: hsla(70, 50%, 65%, 0.5);
+  text-shadow: 0 0 10px hsla(70, 100%, 54%, 0.75);
+  background: hsla(60, 50%, 50%, 0.25);
 }
 nav a:nth-child(4) {
-  border-color: hsla(160, 100%, 65%, 0.5);
-  text-shadow: 0 0 10px hsla(160, 100%, 54%, 0.75);
-  background: hsla(180, 100%, 56%, 0.15);
+  border-color: hsla(110, 50%, 65%, 0.5);
+  text-shadow: 0 0 10px hsla(110, 100%, 54%, 0.75);
+  background: hsla(90, 50%, 50%, 0.25);
 }
 nav a:nth-child(5) {
-  border-color: hsla(220, 100%, 65%, 0.5);
-  text-shadow: 0 0 10px hsla(220, 100%, 54%, 0.75);
-  background: hsla(240, 100%, 56%, 0.15);
-}
+  border-color: hsla(150, 50%, 65%, 0.5);
+  text-shadow: 0 0 10px hsla(150, 100%, 54%, 0.75);
+  background: hsla(170, 50%, 50%, 0.25);
+} */
 
-nav a {
+nav a:link, nav a:visited, nav a:active {
   display: flex;
   flex-direction: row;
   align-items: center;
   padding: 0 20px;
   height: 60px;
   margin: 0 0 4px 20px;
-  /* background: rgba(255, 103, 30, 0.15); */
-  /* border: 1px solid rgba(255, 190, 74, 0.5); */
   border: 1px solid;
+
+
+  border-color: hsl(136, 24%, 41%);
+  background: hsl(158, 16%, 19%);
+
   border-right: none;
   border-radius: 4px 0 0 4px;
-  /* color: #fff4bd; */
-  /* color: hsl(50, 100%, 87%); */
-  color: #fff;
-  /* text-shadow: 0 0 10px #ffa013; */
-  text-shadow: 0 0 10px hsl(22, 100%, 54%);
-  font-weight: bold;
-  text-transform: uppercase;
-  text-decoration: none;
-  /* box-shadow: inset -16px 0 0 rgba(0,0,0,0.1), inset -5px 0 0 rgba(0,0,0,0.2); */
-
-  box-shadow: inset 0 0 0 rgba(255, 103, 30, 0), inset -5px 0 0 rgba(255, 103, 30, 0.25);
+  color: hsla(0, 0%, 100%, 0.5);
+  text-shadow: 0 0 10px hsla(22, 100%, 54%, 0);
+  font-family: "Consolas", "Courier New", monospace;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: inset 0 0 0 rgba(255, 103, 30, 0.05), inset -5px 0 0 rgba(255, 103, 30, 0.25);
 
   transition: all 250ms ease-out;
 }
-nav a:hover, nav a:focus, nav a.selected {
-  outline: none;
-  /* background: #bbb; */
-  /* box-shadow: inset 0 0 0 rgba(0,0,0,0.1), inset 0 0 0 rgba(0,0,0,0.2); */
-  border-color: rgba(255, 190, 74, 1);
-  text-shadow: 0 0 10px hsla(30, 100%, 54%, 0.75);
 
-  box-shadow: inset -200px 0 50px rgba(255, 103, 30, 0.2), inset -5px 0 0 rgba(255, 103, 30, 0.5);
+nav a:hover, nav a:focus, nav a.selected {
+
+  border-color: hsla(38, 100%, 65%, 0.5);
+}
+
+nav a:hover, nav a:focus, nav a.selected, nav a.selected:hover, nav a.selected:focus {
+  outline: none;
+  color: rgba(255, 255, 255, 0.75);
+  background: hsl(51, 13%, 22%);
+  text-shadow: 0 0 10px hsla(30, 100%, 54%, 0.75);
+}
+nav a.selected {
+  border-color: hsl(38, 100%, 65%);
+  color: rgba(255, 255, 255, 1) !important;
+  box-shadow: inset -200px 0 30px rgba(255, 103, 30, 0.1), inset -5px 0 0 rgba(255, 103, 30, 0.5);
 }
 
 article {
@@ -174,7 +185,9 @@ article section input, article section select { float: left; }
 </div>
 <script>
 (function() {
-  // const q = document.querySelectorAll;
+  let historyState = { tab: "datetime" };
+  window.history.replaceState(historyState, null, "");
+
   const navLinks = document.querySelectorAll("nav a");
   const tabs = document.querySelectorAll("article section");
 
