@@ -3,7 +3,7 @@
 <title>Lixie Clock - Stooge Labs</title>
 <style>
 body {
-  background: #222;
+  background: #444;
   color: #333;
   font-family: Arial, Helvetica, sans-serif;
   margin: 0;
@@ -62,43 +62,38 @@ nav a:link, nav a:visited, nav a:active {
   height: 60px;
   margin: 0 0 4px 20px;
   border: 1px solid;
-
-
-  border-color: hsl(136, 24%, 41%);
-  background: hsl(158, 16%, 19%);
-
+  border-color: hsla(0, 0%, 100%, 0.67);
+  background: hsla(0, 0%, 100%, 0.1);
   border-right: none;
   border-radius: 4px 0 0 4px;
-  color: hsla(0, 0%, 100%, 0.5);
+  color: hsla(0, 0%, 100%, 0.75);
   text-shadow: 0 0 10px hsla(22, 100%, 54%, 0);
   font-family: "Consolas", "Courier New", monospace;
   justify-content: center;
   font-size: 20px;
-  box-shadow: inset 0 0 0 rgba(255, 103, 30, 0.05), inset -5px 0 0 rgba(255, 103, 30, 0.25);
-
-  transition: all 250ms ease-out;
+  box-shadow: inset 0 0 0 rgba(255, 103, 30, 0.1), inset -6px 0 0 rgba(255, 103, 30, 0.3);
+  transition: box-shadow 250ms ease-out;
 }
 
-nav a:hover, nav a:focus, nav a.selected {
+nav a:hover, nav a:focus, nav a.selected {/* border-color: hsl(51, 100%, 50%); */}
 
-  border-color: hsla(38, 100%, 65%, 0.5);
-}
+nav a.selected {cursor: default;}
 
 nav a:hover, nav a:focus, nav a.selected, nav a.selected:hover, nav a.selected:focus {
   outline: none;
-  color: rgba(255, 255, 255, 0.75);
-  background: hsl(51, 13%, 22%);
-  text-shadow: 0 0 10px hsla(30, 100%, 54%, 0.75);
+  color: rgb(255, 255, 255);
+  background: hsla(0, 0%, 100%, 0.2);
+  text-shadow: 0 0 10px hsla(0, 0%, 100%, 0.75);
 }
 nav a.selected {
-  border-color: hsl(38, 100%, 65%);
+  border-color: hsl(51, 100%, 50%);
   color: rgba(255, 255, 255, 1) !important;
-  box-shadow: inset -200px 0 30px rgba(255, 103, 30, 0.1), inset -5px 0 0 rgba(255, 103, 30, 0.5);
+  box-shadow: inset -200px 0 100px rgba(255, 103, 30, 0.2), inset -6px 0 0 rgba(255, 103, 30, 0.75);
 }
 
 article {
   flex: 1 1 auto;
-  background: #bbb;
+  background: #ffffff;
 }
 article section {
   display: none;
