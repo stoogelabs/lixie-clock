@@ -91,15 +91,33 @@ nav a.selected {
   box-shadow: inset -200px 0 100px rgba(255, 103, 30, 0.2), inset -6px 0 0 rgba(255, 103, 30, 0.75);
 }
 
-article {
+main {
   flex: 1 1 auto;
   background: #ffffff;
 }
-article section {
+
+#status {
+  margin:20px;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 5px 20px;
+}
+
+#status.success {
+  background: rgba(0, 255, 0, 0.2);
+  color: #080;
+}
+
+#status.error {
+  background: rgba(255, 0, 0, 0.2);
+  color: #a00;
+}
+
+
+main section {
   display: none;
   padding: 20px;
 }
-article section label {
+main section label {
   width: 180px;
   float: left;
   clear:left;
@@ -107,9 +125,7 @@ article section label {
   font-weight: bold;
   font-size: 14px;
 }
-article section input, article section select { float: left; }
-
-
+main section input, main section select { float: left; }
 </style>
 </head>
 <body>
@@ -121,49 +137,53 @@ article section input, article section select { float: left; }
     <a href="stopwatch">Stopwatch</a>
     <a href="durrr">Another Tab</a>
   </nav>
-  <article>
+  <main>
+    <pre id="status"></pre>
     <section id="connection-tab">
       <label for="wifi-ssid">WiFi SSID</label>
       <input name="wifi-ssid" id="wifi-ssid" type="text" minlength="1" maxlength="32" />
       <label for="wifi-pw">WiFi Password</label>
       <input name="wifi-pw" id="wifi-pw" type="password" maxlength="64" />
     </section>
-    <section id="datetime-tab" style="display: block">
+    <section id="datetime-tab">
       <label for="tz-offset">Timezone Offset</label>
       <select name="tz-offset" id="tz-offset">
-        <option value="-12">(-12:00) International Date Line West</option>
-        <option value="-11">(-11:00) Midway Island, Samoa</option>
-        <option value="-10">(-10:00) Hawaii</option>
-        <option value="-9">(-09:00) Alaska</option>
-        <option value="-8">(-08:00) Pacific Time (US & Canada)</option>
-        <option value="-7">(-07:00) Mountain Time (US & Canada)</option>
-        <option value="-6">(-06:00) Central Time (US & Canada)</option>
-        <option value="-5">(-05:00) Eastern Time (US & Canada)</option>
-        <option value="-4">(-04:00) Atlantic Time (Canada)</option>
-        <option value="-3.5">(-03:30) Newfoundland</option>
-        <option value="-3">(-03:00) Buenos Aires</option>
-        <option value="-2">(-02:00) Mid-Atlantic</option>
-        <option value="-1">(-01:00) Azores</option>
-        <option value="0">(+00:00) London</option>
-        <option value="1">(+01:00) Paris</option>
-        <option value="2">(+02:00) Helsinki</option>
-        <option value="3">(+03:00) Moscow</option>
-        <option value="3.5">(+03:30) Tehran</option>
-        <option value="4">(+04:00) Abu Dhabi</option>
-        <option value="4.5">(+04:30) Kabul</option>
-        <option value="5">(+05:00) Islamabad</option>
-        <option value="5.5">(+05:30) Mumbai</option>
-        <option value="5.75">(+05:45) Kathmandu</option>
-        <option value="6">(+06:00) Dhaka</option>
-        <option value="6.5">(+06:30) Yangon</option>
-        <option value="7">(+07:00) Bangkok</option>
-        <option value="8">(+08:00) Hong Kong</option>
-        <option value="9">(+09:00) Tokyo</option>
-        <option value="9.5">(+09:30) Darwin</option>
-        <option value="10">(+10:00) Sydney</option>
-        <option value="11">(+11:00) Solomon Islands</option>
-        <option value="12">(+12:00) Auckland</option>
-        <option value="13">(+13:00) Nuku'alofa</option>
+        <option value="-43200">UTC-12:00 Intl. Date Line West</option>
+        <option value="-39600">UTC-11:00 Midway</option>
+        <option value="-36000">UTC-10:00 Honolulu</option>
+        <option value="-32400">UTC-09:00 Anchorage</option>
+        <option value="-28800">UTC-08:00 San Francisco</option>
+        <option value="-25200">UTC-07:00 Phoenix</option>
+        <option value="-21600">UTC-06:00 Chicago</option>
+        <option value="-18000">UTC-05:00 New York</option>
+        <option value="-14400">UTC-04:00 Santiago</option>
+        <option value="-12600">UTC-03:30 Newfoundland</option>
+        <option value="-10800">UTC-03:00 Buenos Aires</option>
+        <option value="-7200" >UTC-02:00 Mid-Atlantic</option>
+        <option value="-3600" >UTC-01:00 Azores</option>
+        <option value="0"     >UTC+00:00 London</option>
+        <option value="3600"  >UTC+01:00 Paris</option>
+        <option value="7200"  >UTC+02:00 Helsinki</option>
+        <option value="10800" >UTC+03:00 Moscow</option>
+        <option value="12600" >UTC+03:30 Tehran</option>
+        <option value="14400" >UTC+04:00 Dubai</option>
+        <option value="16200" >UTC+04:30 Kabul</option>
+        <option value="18000" >UTC+05:00 Islamabad</option>
+        <option value="19800" >UTC+05:30 Delhi</option>
+        <option value="20700" >UTC+05:45 Kathmandu</option>
+        <option value="21600" >UTC+06:00 Dhaka</option>
+        <option value="23400" >UTC+06:30 Yangon</option>
+        <option value="25200" >UTC+07:00 Bangkok</option>
+        <option value="28800" >UTC+08:00 Hong Kong</option>
+        <option value="31500" >UTC+08:45 Eucla</option>
+        <option value="32400" >UTC+09:00 Tokyo</option>
+        <option value="34200" >UTC+09:30 Adelaide</option>
+        <option value="36000" >UTC+10:00 Sydney</option>
+        <option value="37800" >UTC+10:30 Lord Howe Island</option>
+        <option value="39600" >UTC+11:00 Solomon Islands</option>
+        <option value="43200" >UTC+12:00 Auckland</option>
+        <option value="46800" >UTC+13:00 Tonga</option>
+        <option value="50400" >UTC+14:00 Line Islands</option>
       </select>
       <label for="tz-dst">Daylight Saving Time</label>
       <input name="tz-dst" id="tz-dst" type="checkbox" />
@@ -176,7 +196,7 @@ article section input, article section select { float: left; }
     <section id="stopwatch-tab">
       Ye Olde Stop-watch Tabbe
     </section>
-  </article>
+  </main>
 </div>
 <script>
 (function() {
@@ -184,7 +204,8 @@ article section input, article section select { float: left; }
   window.history.replaceState(historyState, null, "");
 
   const navLinks = document.querySelectorAll("nav a");
-  const tabs = document.querySelectorAll("article section");
+  const tabs = document.querySelectorAll("main section");
+  const statusBox = document.getElementById("status");
 
   function clearTabs() {
     for (const link of navLinks) {
@@ -195,7 +216,7 @@ article section input, article section select { float: left; }
     }
   }
 
-  function setTab(e) {
+  function openTab(e) {
     e.preventDefault();
     clearTabs();
     const link = e.currentTarget;
@@ -205,10 +226,42 @@ article section input, article section select { float: left; }
   }
 
   for (const link of navLinks) {
-    link.addEventListener("click", setTab);
+    link.addEventListener("click", openTab);
   }
 
+  function showSuccess() {
+    statusBox.innerText = "Success!";
+    statusBox.className = "success";
+  }
 
+  function showError(err) {
+    statusBox.innerText = err.toString();
+    statusBox.className = "error";
+  }
+
+  function getSetting() {
+    fetch("getSettings").then(r => r.json()).then(data => {
+
+      showSuccess();
+    }).catch(showError);
+  }
+
+  function saveSettings() {
+    const config = {
+      method: "post",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({
+
+
+      }),
+    }
+
+    fetch("settings", config).catch(showError);
+  }
+
+  navLinks[1].click();
+
+  getSetting();
 
 })();
 </script>
