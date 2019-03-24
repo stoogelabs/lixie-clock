@@ -29,14 +29,14 @@ static const byte brightnessValues[] = {
 };
 
 static const byte panelBrightnessFactor[] = {
+    170,
+    180,
+    190,
     200,
-    200,
-    200,
-    200,
-    200,
-    200,
-    200,
-    200,
+    210,
+    220,
+    230,
+    240,
     255,
     255,
 };
