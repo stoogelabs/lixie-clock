@@ -1,3 +1,6 @@
+#ifndef _LixieDisplay_h
+#define _LixieDisplay_h
+
 #include "Arduino.h"
 #include "FastLED.h"
 
@@ -81,3 +84,5 @@ class LixieDisplay {
 
         void nextBrightnessMode();
 };
+
+#endif
