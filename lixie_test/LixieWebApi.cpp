@@ -26,7 +26,7 @@ HTTPServer insecureServer = HTTPServer();
 void handleRoot(HTTPRequest * req, HTTPResponse * res);
 void handle404(HTTPRequest * req, HTTPResponse * res);
 
-LixieWebApi::handleRoot(HTTPRequest * req, HTTPResponse * res) {
+void LixieWebApi::onRootRequest(HTTPRequest * req, HTTPResponse * res) {
   res->setHeader("Content-Type", "text/html");
 
   res->println("<!DOCTYPE html>");
@@ -52,22 +52,38 @@ LixieWebApi::handleRoot(HTTPRequest * req, HTTPResponse * res) {
   res->println("</html>");
 }
 
-void handle404(HTTPRequest * req, HTTPResponse * res) {
+void LixieWebApi::onApiGet(HTTPRequest * req, HTTPResponse * res) {
+  req->discardRequestBody();
+  res->setHeader("Content-Type", "application/json");
+  res->setHeader("Connection", "Keep-Alive");
+  res->setHeader("Keep-Alive", "timeout=60, max=1000");
+  res->println("{\"i_dont_like\": \"tacos\"}");
+}
+
+void LixieWebApi::onApiPost(HTTPRequest * req, HTTPResponse * res) {
+  req->discardRequestBody();
+  res->setHeader("Content-Type", "application/json");
+  res->setHeader("Connection", "Keep-Alive");
+  res->setHeader("Keep-Alive", "timeout=60, max=1000");
+  res->println("{\"result\": \"zippity do-da\"}");
+}
+
+void LixieWebApi::onResourceNotFound(HTTPRequest * req, HTTPResponse * res) {
   req->discardRequestBody();
   res->setStatusCode(404);
   res->setStatusText("Not Found");
   res->setHeader("Content-Type", "text/html");
-  res->println("<!DOCTYPE html>");
-  res->println("<html>");
-  res->println("<head><title>Not Found</title></head>");
-  res->println("<body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body>");
-  res->println("</html>");
+  res->setHeader("Connection", "Keep-Alive");
+  res->setHeader("Keep-Alive", "timeout=60, max=1000");
+  res->println("<!DOCTYPE html><html><head><title>Not Found</title></head><body><h1>404 Not Found</h1><p>The requested resource was not found on this server.</p></body></html>");
 }
 
 void setupWebServer() {
   // For every resource available on the server, we need to create a ResourceNode
   // The ResourceNode links URL and HTTP method to a handler function
-  ResourceNode * nodeRoot = new ResourceNode("/", "GET", &handleRoot);
+  ResourceNode * nodeRoot = new ResourceNode("/", "GET", &this->onRootRequest);
+  ResourceNode * nodeRoot = new ResourceNode("/api", "GET", &onApiGet);
+  ResourceNode * nodeRoot = new ResourceNode("/api", "POST", &onApiPost);
   ResourceNode * node404  = new ResourceNode("", "GET", &handle404);
 
   // Add the root node to the servers. We can use the same ResourceNode on multiple
@@ -91,6 +107,6 @@ void setupWebServer() {
 
 
 void pollWebServer() {
-    secureServer.loop();
+  secureServer.loop();
 	insecureServer.loop();
 }

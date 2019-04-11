@@ -23,6 +23,11 @@ class LixieWebApi {
 
     private:
         void onRootRequest(HTTPRequest * req, HTTPResponse * res);
+
+        void onApiGet(HTTPRequest * req, HTTPResponse * res);
+
+        void onApiPost(HTTPRequest * req, HTTPResponse * res);
+
         void onResourceNotFound(HTTPRequest * req, HTTPResponse * res);
 };
 
