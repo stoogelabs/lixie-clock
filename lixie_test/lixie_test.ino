@@ -13,6 +13,7 @@
 #include "ArduinoOTA.h"
 #include "TouchButtonManager.h"
 #include "LixieDisplay.h"
+#include "DebugServer.h"
 // #include "BluetoothSerial.h"
 //#include <EEPROM.h>
 
@@ -146,6 +147,8 @@ void setup() {
     getNtpCurrentTime();
 
     server.begin();
+
+    DebugServer::setup();
 
     // displayMode = EEPROM.read(DISPLAY_MODE_ADDR);
 }
@@ -308,6 +311,7 @@ void loop() {
     handleWebRequets();
     buttonManager.poll();
     timeClient.update();
+    DebugServer::listen();
 
     // SerialBT.printf("Touch Sensor: %d\r\n", touchRead(T5));
     switch (displayMode) {

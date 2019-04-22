@@ -1,4 +1,5 @@
 #include "TouchButtonManager.h"
+#include "DebugServer.h"
 
 void TouchButton::updateFiltered(float newVal) {
     filtered *= BUTTON_SMOOTHING_FAST_INV;
@@ -56,15 +57,17 @@ void TouchButtonManager::poll() {
     if (now - lastCheck >= BUTTON_READ_DELAY || now < lastCheck) {
         checkButton(currentButton, now);
 
-        // if (currentButton == 0) {
-        //     TouchButton &button = this->buttons[currentButton];
-        //     Serial.printf(
-        //         "Read button %d: filtered = %.2f, baseline = %.2f\r\n",
-        //         currentButton,
-        //         button.filtered,
-        //         button.baseline
-        //     );
-        // }
+        if (currentButton == 0) {
+            TouchButton &button = this->buttons[currentButton];
+
+            // DebugServer::print("Fuckin button doesn't work right...\r\n");
+            DebugServer::printf(
+                "Read button %d: filtered = %.2f, baseline = %.2f\r\n",
+                currentButton,
+                button.filtered,
+                button.baseline
+            );
+        }
 
         lastCheck = now;
         currentButton = (currentButton + 1) % BUTTON_COUNT;
