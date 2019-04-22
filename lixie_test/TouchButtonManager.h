@@ -12,7 +12,7 @@
 #define BUTTON_SMOOTHING_SLOW       0.0001  // weighting for new values when calculating an expoential moving average
 #define BUTTON_SMOOTHING_SLOW_INV   1 - BUTTON_SMOOTHING_SLOW
 
-#define BUTTON_THRESHHOLD       0.4     // fraction of the base value to be considered a button press
+#define BUTTON_THRESHHOLD       0.7     // fraction of the base value to be considered a button press
 
 #define BUTTON_SHORT_HOLD_TIME  50      // regular press length in ms (non-zero to prevent transients from triggering button)
 #define BUTTON_LONG_HOLD_TIME   800     // long press length in ms
