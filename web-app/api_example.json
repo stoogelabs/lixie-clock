@@ -1,0 +1,23 @@
+{
+  "connection": {
+
+  },
+  "currentMode": "",
+  "modes": {
+    "clock": {
+      "currentTime": 1335438735,
+      "tzOffset": -28800,
+      "ntpServer": null,
+      "dstEnabled": false
+
+    },
+    "countdown": {
+      "endTime": 1335458735,
+      "active": false
+    },
+    "stopwatch": {
+      "currentValue": 123.34,
+      "active": false
+    }
+  }
+}
